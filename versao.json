@@ -1,0 +1,7 @@
+{
+  "versao": "1.0.0",
+  "url": "https://raw.githubusercontent.com/matheus09dasilvahenrique-wq/Toshiruz-Bot/main/index.js",
+  "changelog": "Primeira versão com auto-update",
+  "force": false,
+  "arquivos": ["index.js"]
+}
