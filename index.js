@@ -113,6 +113,58 @@ const palavrasCaca = [
 "garrafa","golfinho","hortela","jabuti","jacare","kiwi","lagarto","lampada","limao","lontra",
 "mamute","maracuja","mexerica","nariz","ouriço","pato","pera","pessego","pinguim","raposa"
 ];
+setInterval(async () => {
+
+    try {
+
+        let db = carregarGold();
+        let alterado = false;
+
+        const grupos =
+        Object.keys(
+            await sock.groupFetchAllParticipating()
+        );
+
+        for (const usuario in db) {
+
+            let encontrado = false;
+
+            for (const grupo of grupos) {
+
+                try {
+
+                    const membros =
+                    (await sock.groupMetadata(grupo))
+                    .participants
+                    .map(x => x.id);
+
+                    if (membros.includes(usuario)) {
+                        encontrado = true;
+                        break;
+                    }
+
+                } catch {}
+
+            }
+
+            if (!encontrado) {
+
+                delete db[usuario];
+                alterado = true;
+
+            }
+
+        }
+
+        if (alterado) {
+            salvarGold(db);
+        }
+
+    } catch (err) {
+        console.log(err);
+    }
+
+}, 86400000);
 const caminhoAluguel = './assets/aluguel.json';
 
 function carregarAluguel() {
@@ -1502,6 +1554,54 @@ case 'totag': {
     }
 
     reply("⚠ Não consegui identificar o tipo de mensagem respondida.");
+}
+break;
+                case 'limpar': {
+
+if (!isDono) return;
+
+let db = carregarGold();
+let removidos = 0;
+
+for (const usuario in db) {
+
+    let encontrado = false;
+
+    const grupos = Object.keys(await sock.groupFetchAllParticipating());
+
+    for (const grupo of grupos) {
+
+        try {
+
+            const membros =
+            (await sock.groupMetadata(grupo))
+            .participants
+            .map(x => x.id);
+
+            if (membros.includes(usuario)) {
+                encontrado = true;
+                break;
+            }
+
+        } catch {}
+
+    }
+
+    if (!encontrado) {
+        delete db[usuario];
+        removidos++;
+    }
+
+}
+
+salvarGold(db);
+
+reply(
+`🧹 Limpeza concluída!
+
+👤 Usuários removidos: ${removidos}`
+);
+
 }
 break;
                 case 'cacapalavras': {
