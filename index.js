@@ -29,7 +29,7 @@ const { exec } = require('child_process');
 const { gerarAttp } = require('./assets/functions/attp.js');
 const advPath = './assets/advertencias.json';
 const menuButtons = require('./dono/menus/menuButtons.js')
-const { TOKEN } = require('./dono/configs');
+const { TOKEN } = require('./dono/configs.json');
 const TOKEN_API = 'TOKEN-API-MATH'
 const API_TOSHI = 'https://bubbly-dedication-production-5925.up.railway.app'
 const fs = require('fs');
@@ -72,26 +72,38 @@ function copiarArquivos(origem, destino) {
 
     const ignorar = [
         "node_modules",
-        "media",
-        ".env"
+        "configs.json",
+        "aluguel.json"
     ];
 
-    const arquivos = fs.readdirSync(origem);
+    const arquivos =
+        fs.readdirSync(origem);
 
     for (const arquivo of arquivos) {
 
         if (ignorar.includes(arquivo))
             continue;
 
-        const origemAtual = path.join(origem, arquivo);
-        const destinoAtual = path.join(destino, arquivo);
+        const origemAtual =
+            path.join(origem, arquivo);
 
-        if (fs.statSync(origemAtual).isDirectory()) {
+        const destinoAtual =
+            path.join(destino, arquivo);
 
-            if (!fs.existsSync(destinoAtual)) {
-                fs.mkdirSync(destinoAtual, {
-                    recursive: true
-                });
+        if (
+            fs.statSync(origemAtual)
+            .isDirectory()
+        ) {
+
+            if (
+                !fs.existsSync(destinoAtual)
+            ) {
+                fs.mkdirSync(
+                    destinoAtual,
+                    {
+                        recursive: true
+                    }
+                );
             }
 
             copiarArquivos(
@@ -111,23 +123,34 @@ function copiarArquivos(origem, destino) {
 }
 async function atualizarBot() {
 
+    const configs = JSON.parse(
+        fs.readFileSync("./dono/configs.json")
+    );
+
+    const versaoLocal = configs.version;
+
     const dadosGithub = (
         await axios.get(VERSION_URL)
     ).data;
 
     const versaoGithub = dadosGithub.version;
-    const novidades = dadosGithub.mensagem || "Sem informações.";
+    const novidades =
+        dadosGithub.mensagem ||
+        "Sem informações.";
 
-    if (versaoGithub == versao) {
+    if (versaoGithub === versaoLocal) {
         return {
             status: false,
-            mensagem: "✅ Você já está na última versão."
+            mensagem:
+                "✅ Você já está na última versão."
         };
     }
 
     const resposta = await axios.get(
         ZIP_URL,
-        { responseType: "arraybuffer" }
+        {
+            responseType: "arraybuffer"
+        }
     );
 
     fs.writeFileSync(
@@ -135,24 +158,77 @@ async function atualizarBot() {
         resposta.data
     );
 
-    const zip = new AdmZip("./update.zip");
+    const zip = new AdmZip(
+        "./update.zip"
+    );
 
-    zip.extractAllTo("./temp_update", true);
+    zip.extractAllTo(
+        "./temp_update",
+        true
+    );
 
     const pastaExtraida =
         fs.readdirSync("./temp_update")[0];
 
+    const origem =
+        `./temp_update/${pastaExtraida}`;
+
+    const protegidos = [
+        "dono",
+        "media",
+        "node_modules",
+        "assets"
+        "keycheck"
+        "Download"
+        "package.json"
+        "package-lock.json"
+    ];
+
+    const arquivosRaiz =
+        fs.readdirSync("./");
+
+    for (const item of arquivosRaiz) {
+
+        if (
+            protegidos.includes(item) ||
+            item === "temp_update" ||
+            item === "update.zip"
+        ) continue;
+
+        fs.rmSync(item, {
+            recursive: true,
+            force: true
+        });
+    }
+
     copiarArquivos(
-        `./temp_update/${pastaExtraida}`,
+        origem,
         "./"
     );
 
-    fs.rmSync("./temp_update", {
-        recursive: true,
-        force: true
-    });
+    configs.version =
+        versaoGithub;
 
-    fs.unlinkSync("./update.zip");
+    fs.writeFileSync(
+        "./dono/configs.json",
+        JSON.stringify(
+            configs,
+            null,
+            2
+        )
+    );
+
+    fs.rmSync(
+        "./temp_update",
+        {
+            recursive: true,
+            force: true
+        }
+    );
+
+    fs.unlinkSync(
+        "./update.zip"
+    );
 
     return {
         status: true,
@@ -161,7 +237,7 @@ async function atualizarBot() {
         mensagem:
 `🚀 Atualização encontrada!
 
-📦 Nova versão: ${versaoGithub}
+📦 Versão: ${versaoGithub}
 
 ${novidades}`
     };
