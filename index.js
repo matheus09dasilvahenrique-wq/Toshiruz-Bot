@@ -35,6 +35,14 @@ const API_TOSHI = 'https://bubbly-dedication-production-5925.up.railway.app'
 const fs = require('fs');
 const cacaPalavras = {};
 const jogoPalavras = {};
+const petsPath = path.join(__dirname, './assets/pet.json');
+const userPetsPath = path.join(__dirname, './assets/userpets.json');
+
+let pets = JSON.parse(fs.readFileSync(petsPath));
+
+let userPets = fs.existsSync(userPetsPath)
+    ? JSON.parse(fs.readFileSync(userPetsPath))
+    : {};
 let sock;
 function carregarGold() {
     if (!fs.existsSync('./assets/golds.json')) {
@@ -2060,13 +2068,18 @@ break;
         const fs = require('fs');
         const path = require('path');
 
-        const petPath = path.join(__dirname, './assets/pet.json');
+        const petsPath = path.join(__dirname, './assets/pet.json');
+        const goldsPath = path.join(__dirname, './assets/golds.json');
+        const userPetsPath = path.join(__dirname, './assets/userpets.json');
         const precoPath = path.join(__dirname, './assets/precos.json');
-        const goldPath = path.join(__dirname, './assets/golds.json');
 
-        let pets = JSON.parse(fs.readFileSync(petPath));
+        let pets = JSON.parse(fs.readFileSync(petsPath));
+        let goldDB = JSON.parse(fs.readFileSync(goldsPath));
         let precos = JSON.parse(fs.readFileSync(precoPath));
-        let goldDB = JSON.parse(fs.readFileSync(goldPath));
+
+        let userPets = fs.existsSync(userPetsPath)
+            ? JSON.parse(fs.readFileSync(userPetsPath))
+            : {};
 
         let args = q?.trim();
         if (!args) return reply("❌ Digite o nome ou ID do pet!");
@@ -2091,15 +2104,14 @@ break;
             return reply(`❌ Você precisa de ${price} golds. Você tem ${userGold}.`);
         }
 
-        // database de pets
-        let db = JSON.parse(fs.readFileSync('./database.json'));
+        // garante usuário no userpets.json
+        if (!userPets[sender]) {
+            userPets[sender] = [];
+        }
 
-        if (!db.users) db.users = {};
-        if (!db.users[sender]) db.users[sender] = { pets: [] };
-        if (!db.users[sender].pets) db.users[sender].pets = [];
+        // 🔥 impede pet repetido
+        let jaTem = userPets[sender].find(p => p.id == pet.id);
 
-        // impede duplicado
-        let jaTem = db.users[sender].pets.find(p => p.id == pet.id);
         if (jaTem) {
             return reply(`⚠️ Você já possui o pet *${pet.nome}*.`);
         }
@@ -2108,17 +2120,68 @@ break;
         goldDB[sender].gold -= price;
 
         // adiciona pet
-        db.users[sender].pets.push(pet);
+        userPets[sender].push(pet);
 
         // salva arquivos
-        fs.writeFileSync(goldPath, JSON.stringify(goldDB, null, 2));
-        fs.writeFileSync('./database.json', JSON.stringify(db, null, 2));
+        fs.writeFileSync(goldsPath, JSON.stringify(goldDB, null, 2));
+        fs.writeFileSync(userPetsPath, JSON.stringify(userPets, null, 2));
 
         return reply(`🐾 Você comprou *${pet.nome}* por ${price} golds!`);
 
     } catch (err) {
         console.log(err);
         reply("❌ Erro ao comprar pet.");
+    }
+}
+break;
+                case 'meuspets': {
+    try {
+
+        const userPetsPath = path.join(__dirname, './assets/userpets.json');
+
+        let userPets = fs.existsSync(userPetsPath)
+            ? JSON.parse(fs.readFileSync(userPetsPath))
+            : {};
+
+        let meus = userPets[sender];
+
+        if (!meus || meus.length === 0) {
+            return reply("❌ Você não tem pets ainda.");
+        }
+
+        let texto = `🐾 *SEUS PETS*\n\n`;
+
+        meus.forEach((p, i) => {
+            texto += `${i + 1}. ${p.nome} (ID: ${p.id})\n`;
+        });
+
+        return reply(texto);
+
+    } catch (err) {
+        console.log(err);
+        reply("❌ Erro ao ver seus pets.");
+    }
+}
+break;
+                case 'listapets': {
+    try {
+
+        const petsPath = path.join(__dirname, './assets/pet.json');
+        let pets = JSON.parse(fs.readFileSync(petsPath));
+
+        let texto = `🛒 *LOJA DE PETS*\n💰 Todos custam 25 golds\n\n`;
+
+        pets.forEach(p => {
+            texto += `🐾 ${p.nome} (ID: ${p.id})\n`;
+        });
+
+        texto += `\n💡 Use: comprarpet <nome ou id>`;
+
+        return reply(texto);
+
+    } catch (err) {
+        console.log(err);
+        reply("❌ Erro ao listar pets.");
     }
 }
 break;
