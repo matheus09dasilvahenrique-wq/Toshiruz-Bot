@@ -2147,8 +2147,7 @@ break;
     if (!db[sender] || !db[sender].pets.length)
         return reply("❌ Você não tem pets.");
 
-    let user = q?.split('@')[0] + '@s.whatsapp.net';
-
+    let user = mentionedJid?.[0] || q;
     if (!user)
         return reply("❌ Marque alguém para batalhar.");
 
