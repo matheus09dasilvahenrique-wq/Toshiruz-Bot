@@ -1709,6 +1709,260 @@ case 'gemini': {
     }
 }
 break;
+                case 'trabalho': {
+    const fs = require('fs');
+
+    const goldsPath = './assets/golds.json';
+    const trabalhoPath = './assets/trabalho.json';
+
+    let golds = fs.existsSync(goldsPath)
+        ? JSON.parse(fs.readFileSync(goldsPath))
+        : {};
+
+    let trabalho = fs.existsSync(trabalhoPath)
+        ? JSON.parse(fs.readFileSync(trabalhoPath))
+        : {};
+
+    const cooldown = 8 * 60 * 60 * 1000; // 8 horas
+    const recompensa = 60;
+
+    if (!golds[sender]) {
+        golds[sender] = {
+            gold: 0
+        };
+    }
+
+    const agora = Date.now();
+
+    if (trabalho[sender]) {
+        const restante = cooldown - (agora - trabalho[sender]);
+
+        if (restante > 0) {
+            const horas = Math.floor(restante / 3600000);
+            const minutos = Math.floor((restante % 3600000) / 60000);
+
+            return reply(
+                `💼 Você já trabalhou hoje!\n\n⏳ Aguarde ${horas}h ${minutos}min para trabalhar novamente.`
+            );
+        }
+    }
+
+    golds[sender].gold += recompensa;
+    trabalho[sender] = agora;
+
+    fs.writeFileSync(goldsPath, JSON.stringify(golds, null, 2));
+    fs.writeFileSync(trabalhoPath, JSON.stringify(trabalho, null, 2));
+
+    await sock.sendMessage(from, {
+        image: {
+            url: 'https://qu.ax/ppgMs'
+        },
+        caption:
+`💼 *TRABALHO CONCLUÍDO!*
+
+💰 Recompensa: ${recompensa} Golds
+
+🏦 Saldo atual: ${golds[sender].gold} Golds
+
+⏳ Próximo trabalho disponível em 8 horas.`
+    }, {
+        quoted: info
+    });
+
+}
+break;
+                case 'fazendeiro': {
+    const fs = require('fs');
+
+    const goldsPath = './assets/golds.json';
+    const fazendeiroPath = './assets/fazendeiro.json';
+
+    let golds = fs.existsSync(goldsPath)
+        ? JSON.parse(fs.readFileSync(goldsPath))
+        : {};
+
+    let fazendeiro = fs.existsSync(fazendeiroPath)
+        ? JSON.parse(fs.readFileSync(fazendeiroPath))
+        : {};
+
+    const cooldown = 8 * 60 * 60 * 1000; // 8 horas
+    const recompensa = 35;
+
+    if (!golds[sender]) {
+        golds[sender] = {
+            gold: 0
+        };
+    }
+
+    const agora = Date.now();
+
+    if (fazendeiro[sender]) {
+        const restante = cooldown - (agora - fazendeiro[sender]);
+
+        if (restante > 0) {
+            const horas = Math.floor(restante / 3600000);
+            const minutos = Math.floor((restante % 3600000) / 60000);
+
+            return reply(
+                `🚜 Você já trabalhou na fazenda hoje!\n\n⏳ Aguarde ${horas}h ${minutos}min para colher novamente.`
+            );
+        }
+    }
+
+    golds[sender].gold += recompensa;
+    fazendeiro[sender] = agora;
+
+    fs.writeFileSync(goldsPath, JSON.stringify(golds, null, 2));
+    fs.writeFileSync(fazendeiroPath, JSON.stringify(fazendeiro, null, 2));
+
+    await sock.sendMessage(from, {
+        image: {
+            url: 'https://qu.ax/C9g8d'
+        },
+        caption:
+`🚜 *DIA DE COLHEITA!*
+
+🌾 Você trabalhou na fazenda e recebeu:
+
+💰 +${recompensa} Golds
+
+🏦 Saldo atual: ${golds[sender].gold} Golds
+
+⏳ Volte em 8 horas para colher novamente.`
+    }, {
+        quoted: info
+    });
+
+}
+break;
+                case 'capinar': {
+    const fs = require('fs');
+
+    const goldsPath = './assets/golds.json';
+    const capinarPath = './assets/capinar.json';
+
+    let golds = fs.existsSync(goldsPath)
+        ? JSON.parse(fs.readFileSync(goldsPath))
+        : {};
+
+    let capinar = fs.existsSync(capinarPath)
+        ? JSON.parse(fs.readFileSync(capinarPath))
+        : {};
+
+    const cooldown = 8 * 60 * 60 * 1000; // 8 horas
+    const recompensa = 50;
+
+    if (!golds[sender]) {
+        golds[sender] = {
+            gold: 0
+        };
+    }
+
+    const agora = Date.now();
+
+    if (capinar[sender]) {
+        const restante = cooldown - (agora - capinar[sender]);
+
+        if (restante > 0) {
+            const horas = Math.floor(restante / 3600000);
+            const minutos = Math.floor((restante % 3600000) / 60000);
+
+            return reply(
+                `🌱 Você já capinou hoje!\n\n⏳ Aguarde ${horas}h ${minutos}min para capinar novamente.`
+            );
+        }
+    }
+
+    golds[sender].gold += recompensa;
+    capinar[sender] = agora;
+
+    fs.writeFileSync(goldsPath, JSON.stringify(golds, null, 2));
+    fs.writeFileSync(capinarPath, JSON.stringify(capinar, null, 2));
+
+    await sock.sendMessage(from, {
+        image: {
+            url: 'https://qu.ax/ZlWqQ'
+        },
+        caption:
+`🌱 *CAPINA CONCLUÍDA!*
+
+🪓 Você limpou o terreno com sucesso!
+
+💰 Recompensa: +${recompensa} Golds
+
+🏦 Saldo atual: ${golds[sender].gold} Golds
+
+⏳ Você poderá capinar novamente em 8 horas.`
+    }, {
+        quoted: info
+    });
+
+}
+break;
+                case 'pescar': {
+    const fs = require('fs');
+
+    const goldsPath = './assets/golds.json';
+    const pescarPath = './assets/pescar.json';
+
+    let golds = fs.existsSync(goldsPath)
+        ? JSON.parse(fs.readFileSync(goldsPath))
+        : {};
+
+    let pescar = fs.existsSync(pescarPath)
+        ? JSON.parse(fs.readFileSync(pescarPath))
+        : {};
+
+    const cooldown = 8 * 60 * 60 * 1000; // 8 horas
+    const recompensa = 15;
+
+    if (!golds[sender]) {
+        golds[sender] = {
+            gold: 0
+        };
+    }
+
+    const agora = Date.now();
+
+    if (pescar[sender]) {
+        const restante = cooldown - (agora - pescar[sender]);
+
+        if (restante > 0) {
+            const horas = Math.floor(restante / 3600000);
+            const minutos = Math.floor((restante % 3600000) / 60000);
+
+            return reply(
+                `🎣 Você já pescou recentemente!\n\n⏳ Aguarde ${horas}h ${minutos}min para pescar novamente.`
+            );
+        }
+    }
+
+    golds[sender].gold += recompensa;
+    pescar[sender] = agora;
+
+    fs.writeFileSync(goldsPath, JSON.stringify(golds, null, 2));
+    fs.writeFileSync(pescarPath, JSON.stringify(pescar, null, 2));
+
+    await sock.sendMessage(from, {
+        image: {
+            url: 'https://qu.ax/xgcOZ'
+        },
+        caption:
+`🎣 *PESCARIA CONCLUÍDA!*
+
+🐟 Você voltou do rio com uma ótima pescaria!
+
+💰 Recompensa: +${recompensa} Golds
+
+🏦 Saldo atual: ${golds[sender].gold} Golds
+
+⏳ Você poderá pescar novamente em 8 horas.`
+    }, {
+        quoted: info
+    });
+
+}
+break;
 case 'tiktok': {
     try {
         if (!q) return reply('📹 *Envie o link de algum vídeo do TikTok.*\nExemplo: #tiktok https://vt.tiktok.com/xxxx');
