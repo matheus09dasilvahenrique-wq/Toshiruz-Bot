@@ -2097,6 +2097,25 @@ break;
     return reply("🐾 Você adotou seu primeiro pet: Doguinho!");
 }
 break;
+                case 'listapets': {
+    const fs = require('fs');
+
+    let pets = JSON.parse(fs.readFileSync('./assets/pet.json'));
+
+    if (!pets || pets.length === 0)
+        return reply("❌ Nenhum pet encontrado.");
+
+    let txt = `🐾 *LISTA DE PETS DISPONÍVEIS*\n\n`;
+
+    pets.forEach(p => {
+        txt += `🐶 ${p.nome}\n`;
+        txt += `💰 Preço: ${p.preco}\n`;
+        txt += `⭐ Raridade: ${p.raridade}\n\n`;
+    });
+
+    return reply(txt);
+}
+break;
                 case 'comprarpet': {
     const pets = JSON.parse(fs.readFileSync('./assets/pet.json'));
     const golds = JSON.parse(fs.readFileSync('./assets/golds.json'));
