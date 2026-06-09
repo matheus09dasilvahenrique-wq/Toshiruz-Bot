@@ -68,6 +68,47 @@ function grupoAlugado(id) {
 
     return grupo;
 }
+function copiarArquivos(origem, destino) {
+
+    const ignorar = [
+        "node_modules",
+        "media",
+        ".env"
+    ];
+
+    const arquivos = fs.readdirSync(origem);
+
+    for (const arquivo of arquivos) {
+
+        if (ignorar.includes(arquivo))
+            continue;
+
+        const origemAtual = path.join(origem, arquivo);
+        const destinoAtual = path.join(destino, arquivo);
+
+        if (fs.statSync(origemAtual).isDirectory()) {
+
+            if (!fs.existsSync(destinoAtual)) {
+                fs.mkdirSync(destinoAtual, {
+                    recursive: true
+                });
+            }
+
+            copiarArquivos(
+                origemAtual,
+                destinoAtual
+            );
+
+        } else {
+
+            fs.copyFileSync(
+                origemAtual,
+                destinoAtual
+            );
+
+        }
+    }
+}
 async function atualizarBot() {
 
     const dadosGithub = (
