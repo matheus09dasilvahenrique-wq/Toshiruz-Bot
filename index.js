@@ -33,6 +33,7 @@ const { TOKEN } = require('./dono/configs.json');
 const TOKEN_API = 'TOKEN-API-MATH'
 const API_TOSHI = 'https://bubbly-dedication-production-5925.up.railway.app'
 const fs = require('fs');
+const path = require('node:path');
 const cacaPalavras = {};
 const jogoPalavras = {};
 const petsPath = path.join(__dirname, './assets/pet.json');
@@ -409,7 +410,6 @@ const segundos = now.format("ss");
 const dataFormatada = `${dia}/${mes}/${ano}`;
 const horaFormatada = `${horas}:${minutos}:${segundos}`;
 const { yts } = require("yt-search");
-const path = require('node:path');
 const pino = require('pino');
 const colors = require('colors');
 const readline = require('readline');
@@ -2063,104 +2063,87 @@ break;
     reply(`✅ Grupo registrado por ${dias} dias.`);
 }
 break;
-                case 'comprarpet': {
+               case 'comprarpet': {
     try {
         const fs = require('fs');
         const path = require('path');
 
-        const petsPath = path.join(__dirname, './assets/pet.json');
-        const goldsPath = path.join(__dirname, './assets/golds.json');
-        const userPetsPath = path.join(__dirname, './assets/userpets.json');
-        const precoPath = path.join(__dirname, './assets/precos.json');
+        const pets = JSON.parse(fs.readFileSync('./assets/pet.json'));
+        const golds = JSON.parse(fs.readFileSync('./assets/golds.json'));
+        const userpetsPath = './assets/userpets.json';
 
-        let pets = JSON.parse(fs.readFileSync(petsPath));
-        let goldDB = JSON.parse(fs.readFileSync(goldsPath));
-        let precos = JSON.parse(fs.readFileSync(precoPath));
-
-        let userPets = fs.existsSync(userPetsPath)
-            ? JSON.parse(fs.readFileSync(userPetsPath))
+        let userpets = fs.existsSync(userpetsPath)
+            ? JSON.parse(fs.readFileSync(userpetsPath))
             : {};
 
-        let args = q?.trim();
-        if (!args) return reply("❌ Digite o nome ou ID do pet!");
-
         let pet = pets.find(p =>
-            p.nome.toLowerCase() === args.toLowerCase() ||
-            p.id == args
+            p.nome.toLowerCase() === q?.toLowerCase() ||
+            p.id == q
         );
 
-        if (!pet) return reply("❌ Esse pet não existe!");
+        if (!pet) return reply("❌ Pet não encontrado!");
 
-        const price = precos.pet;
-
-        // garante usuário no golds.json
-        if (!goldDB[sender]) {
-            goldDB[sender] = { gold: 0 };
+        if (!golds[sender]) golds[sender] = { gold: 0 };
+        if (!userpets[sender]) {
+            userpets[sender] = {
+                userId: sender,
+                pets: []
+            };
         }
 
-        let userGold = goldDB[sender].gold;
+        let price = pet.preco;
 
-        if (userGold < price) {
-            return reply(`❌ Você precisa de ${price} golds. Você tem ${userGold}.`);
-        }
+        if (golds[sender].gold < price)
+            return reply("❌ Gold insuficiente!");
 
-        // garante usuário no userpets.json
-        if (!userPets[sender]) {
-            userPets[sender] = [];
-        }
+        let jaTem = userpets[sender].pets.find(p => p.id == pet.id);
+        if (jaTem)
+            return reply("⚠️ Você já possui esse pet!");
 
-        // 🔥 impede pet repetido
-        let jaTem = userPets[sender].find(p => p.id == pet.id);
+        // cria pet do usuário com stats próprios
+        let newPet = {
+            id: pet.id,
+            nome: pet.nome,
+            hp: pet.hp,
+            maxHp: pet.hp,
+            atk: pet.atk,
+            def: pet.def,
+            level: 1,
+            xp: 0,
+            raridade: pet.raridade
+        };
 
-        if (jaTem) {
-            return reply(`⚠️ Você já possui o pet *${pet.nome}*.`);
-        }
+        golds[sender].gold -= price;
+        userpets[sender].pets.push(newPet);
 
-        // remove gold
-        goldDB[sender].gold -= price;
+        fs.writeFileSync('./assets/golds.json', JSON.stringify(golds, null, 2));
+        fs.writeFileSync(userpetsPath, JSON.stringify(userpets, null, 2));
 
-        // adiciona pet
-        userPets[sender].push(pet);
+        return reply(`🐾 Você comprou *${pet.nome}*!`);
 
-        // salva arquivos
-        fs.writeFileSync(goldsPath, JSON.stringify(goldDB, null, 2));
-        fs.writeFileSync(userPetsPath, JSON.stringify(userPets, null, 2));
-
-        return reply(`🐾 Você comprou *${pet.nome}* por ${price} golds!`);
-
-    } catch (err) {
-        console.log(err);
+    } catch (e) {
+        console.log(e);
         reply("❌ Erro ao comprar pet.");
     }
 }
 break;
                 case 'meuspets': {
-    try {
+    const userpets = fs.existsSync('./assets/userpets.json')
+        ? JSON.parse(fs.readFileSync('./assets/userpets.json'))
+        : {};
 
-        const userPetsPath = path.join(__dirname, './assets/userpets.json');
+    let data = userpets[sender];
 
-        let userPets = fs.existsSync(userPetsPath)
-            ? JSON.parse(fs.readFileSync(userPetsPath))
-            : {};
+    if (!data || !data.pets.length)
+        return reply("❌ Você não tem pets.");
 
-        let meus = userPets[sender];
+    let txt = `🐾 *SEUS PETS*\n\n`;
 
-        if (!meus || meus.length === 0) {
-            return reply("❌ Você não tem pets ainda.");
-        }
+    data.pets.forEach((p, i) => {
+        txt += `${i + 1}. ${p.nome} ❤️${p.hp}/${p.maxHp} ⚔️${p.atk}\n`;
+    });
 
-        let texto = `🐾 *SEUS PETS*\n\n`;
-
-        meus.forEach((p, i) => {
-            texto += `${i + 1}. ${p.nome} (ID: ${p.id})\n`;
-        });
-
-        return reply(texto);
-
-    } catch (err) {
-        console.log(err);
-        reply("❌ Erro ao ver seus pets.");
-    }
+    return reply(txt);
 }
 break;
                 case 'listapets': {
@@ -2188,19 +2171,89 @@ break;
                 case 'batalhar': {
     const userpets = JSON.parse(fs.readFileSync('./assets/userpets.json'));
 
-    if (!userpets[sender] || userpets[sender].length === 0)
-        return reply("❌ Você não tem pet.");
+    let meus = userpets[sender];
 
-    let inimigo = userpets[sender][0];
+    if (!meus || meus.length === 0)
+        return reply("❌ Você não tem pets.");
 
-    let dano = Math.floor(Math.random() * 20) + 5;
-    let defesa = Math.floor(Math.random() * 10);
+    let txt = `⚔️ *ESCOLHA SEU PET*\n\n`;
 
-    let resultado = dano - defesa;
+    meus.forEach((p, i) => {
+        txt += `${i + 1}. ${p.nome} ❤️${p.hp}/${p.maxHp}\n`;
+    });
 
-    if (resultado <= 0) resultado = 1;
+    txt += `\n💡 Use: batalhar2 <número>`;
+    return reply(txt);
+}
+break;
+                case 'batalhar2': {
+    const userpets = JSON.parse(fs.readFileSync('./assets/userpets.json'));
 
-    return reply(`⚔️ Batalha iniciada!\n\n🐾 Seu pet causou ${resultado} de dano!`);
+    let meus = userpets[sender];
+    if (!meus) return reply("❌ Sem pets.");
+
+    let index = parseInt(q) - 1;
+    if (!meus[index]) return reply("❌ Número inválido.");
+
+    let meu = meus[index];
+
+    // inimigo aleatório
+    let all = Object.values(userpets).flat();
+    let inimigo = all[Math.floor(Math.random() * all.length)];
+
+    if (!inimigo) return reply("❌ Sem inimigos.");
+
+    let log = `⚔️ *BATALHA INICIADA*\n\n`;
+
+    let meuHp = meu.hp;
+    let inimHp = inimigo.hp;
+
+    while (meuHp > 0 && inimHp > 0) {
+
+        // turno do player
+        let escolha = ["ataque", "defesa", "skill"][Math.floor(Math.random() * 3)];
+
+        let danoPlayer = 0;
+
+        if (escolha === "ataque") {
+            danoPlayer = meu.atk;
+        } else if (escolha === "skill") {
+            danoPlayer = meu.atk * 2;
+        } else {
+            danoPlayer = Math.floor(meu.atk / 2);
+        }
+
+        inimHp -= danoPlayer;
+
+        if (inimHp <= 0) break;
+
+        // turno inimigo
+        let danoInim = inimigo.atk - meu.def;
+        if (danoInim < 1) danoInim = 1;
+
+        meuHp -= danoInim;
+    }
+
+    let xpGanho = Math.floor(Math.random() * 50) + 20;
+
+    // salvar XP
+    let db = JSON.parse(fs.readFileSync('./assets/userpets.json'));
+    let pet = db[sender].find(p => p.id == meu.id);
+
+    pet.xp += xpGanho;
+
+    let resultado = meuHp > 0
+        ? `🏆 VOCÊ VENCEU!\n+${xpGanho} XP`
+        : `💀 VOCÊ PERDEU!\n+${xpGanho} XP mesmo assim`;
+
+    fs.writeFileSync('./assets/userpets.json', JSON.stringify(db, null, 2));
+
+    return reply(
+        `⚔️ *BATALHA FINALIZADA*\n\n` +
+        `🐾 Seu pet: ${meu.nome}\n` +
+        `🐾 Inimigo: ${inimigo.nome}\n\n` +
+        resultado
+    );
 }
 break;
                 case 'treinarpet': {
