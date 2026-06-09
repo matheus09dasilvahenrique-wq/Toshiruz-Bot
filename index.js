@@ -2171,88 +2171,93 @@ break;
                 case 'batalhar': {
     const userpets = JSON.parse(fs.readFileSync('./assets/userpets.json'));
 
-    let meus = userpets[sender];
+    let data = userpets[sender];
 
-    if (!meus || meus.length === 0)
-        return reply("❌ Você não tem pets.");
+    if (!data || !data.pets || data.pets.length === 0)
+        return reply("❌ Você não tem pets para batalhar.");
 
     let txt = `⚔️ *ESCOLHA SEU PET*\n\n`;
 
-    meus.forEach((p, i) => {
-        txt += `${i + 1}. ${p.nome} ❤️${p.hp}/${p.maxHp}\n`;
+    data.pets.forEach((p, i) => {
+        txt += `${i + 1}. ${p.nome} ❤️${p.hp}/${p.maxHp} ⚔️${p.atk}\n`;
     });
 
-    txt += `\n💡 Use: batalhar2 <número>`;
+    txt += `\n💡 Use: batalhar2 <número do pet>`;
+
     return reply(txt);
 }
 break;
                 case 'batalhar2': {
     const userpets = JSON.parse(fs.readFileSync('./assets/userpets.json'));
 
-    let meus = userpets[sender];
-    if (!meus) return reply("❌ Sem pets.");
+    let data = userpets[sender];
+
+    if (!data || !data.pets || data.pets.length === 0)
+        return reply("❌ Você não tem pets.");
 
     let index = parseInt(q) - 1;
-    if (!meus[index]) return reply("❌ Número inválido.");
 
-    let meu = meus[index];
+    if (isNaN(index) || !data.pets[index])
+        return reply("❌ Escolha um número válido.");
 
-    // inimigo aleatório
-    let all = Object.values(userpets).flat();
-    let inimigo = all[Math.floor(Math.random() * all.length)];
+    let meu = data.pets[index];
 
-    if (!inimigo) return reply("❌ Sem inimigos.");
+    // 🔥 pega inimigo global
+    let allPets = Object.values(userpets)
+        .flatMap(u => u.pets || []);
 
-    let log = `⚔️ *BATALHA INICIADA*\n\n`;
+    if (!allPets.length)
+        return reply("❌ Não há inimigos.");
+
+    let inimigo = allPets[Math.floor(Math.random() * allPets.length)];
 
     let meuHp = meu.hp;
     let inimHp = inimigo.hp;
 
+    let log = `⚔️ *BATALHA INICIADA*\n\n`;
+    log += `🐾 Você: ${meu.nome}\n`;
+    log += `🐾 Inimigo: ${inimigo.nome}\n\n`;
+
     while (meuHp > 0 && inimHp > 0) {
 
-        // turno do player
-        let escolha = ["ataque", "defesa", "skill"][Math.floor(Math.random() * 3)];
-
-        let danoPlayer = 0;
-
-        if (escolha === "ataque") {
-            danoPlayer = meu.atk;
-        } else if (escolha === "skill") {
-            danoPlayer = meu.atk * 2;
-        } else {
-            danoPlayer = Math.floor(meu.atk / 2);
-        }
+        // player ataca
+        let danoPlayer = meu.atk - inimigo.def;
+        if (danoPlayer < 1) danoPlayer = 1;
 
         inimHp -= danoPlayer;
 
         if (inimHp <= 0) break;
 
-        // turno inimigo
-        let danoInim = inimigo.atk - meu.def;
-        if (danoInim < 1) danoInim = 1;
+        // inimigo ataca
+        let danoInimigo = inimigo.atk - meu.def;
+        if (danoInimigo < 1) danoInimigo = 1;
 
-        meuHp -= danoInim;
+        meuHp -= danoInimigo;
     }
 
-    let xpGanho = Math.floor(Math.random() * 50) + 20;
+    let xp = Math.floor(Math.random() * 60) + 20;
 
-    // salvar XP
-    let db = JSON.parse(fs.readFileSync('./assets/userpets.json'));
-    let pet = db[sender].find(p => p.id == meu.id);
+    meu.xp += xp;
 
-    pet.xp += xpGanho;
+    // level up
+    if (meu.xp >= 100) {
+        meu.level += 1;
+        meu.xp = 0;
+        meu.hp += 10;
+        meu.atk += 2;
+        meu.def += 1;
+    }
+
+    fs.writeFileSync('./assets/userpets.json', JSON.stringify(userpets, null, 2));
 
     let resultado = meuHp > 0
-        ? `🏆 VOCÊ VENCEU!\n+${xpGanho} XP`
-        : `💀 VOCÊ PERDEU!\n+${xpGanho} XP mesmo assim`;
-
-    fs.writeFileSync('./assets/userpets.json', JSON.stringify(db, null, 2));
+        ? "🏆 VOCÊ VENCEU!"
+        : "💀 VOCÊ PERDEU!";
 
     return reply(
-        `⚔️ *BATALHA FINALIZADA*\n\n` +
-        `🐾 Seu pet: ${meu.nome}\n` +
-        `🐾 Inimigo: ${inimigo.nome}\n\n` +
-        resultado
+        `${log}` +
+        `${resultado}\n\n` +
+        `⭐ XP ganho: ${xp}`
     );
 }
 break;
