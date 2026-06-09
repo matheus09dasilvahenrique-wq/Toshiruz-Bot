@@ -2057,53 +2057,64 @@ break;
 break;
                 case 'comprarpet': {
     try {
+        const fs = require('fs');
+        const path = require('path');
+
         const petPath = path.join(__dirname, './assets/pet.json');
         const precoPath = path.join(__dirname, './assets/precos.json');
+        const goldPath = path.join(__dirname, './assets/golds.json');
 
         let pets = JSON.parse(fs.readFileSync(petPath));
         let precos = JSON.parse(fs.readFileSync(precoPath));
+        let goldDB = JSON.parse(fs.readFileSync(goldPath));
 
-        let userGold = db.users[sender].gold || 0;
         let args = q?.trim();
-
-        if (!args) {
-            return reply("❌ Digite o nome ou ID do pet que deseja comprar!");
-        }
+        if (!args) return reply("❌ Digite o nome ou ID do pet!");
 
         let pet = pets.find(p =>
             p.nome.toLowerCase() === args.toLowerCase() ||
             p.id == args
         );
 
-        if (!pet) {
-            return reply("❌ Esse pet não existe!");
-        }
+        if (!pet) return reply("❌ Esse pet não existe!");
 
         const price = precos.pet;
 
-        if (userGold < price) {
-            return reply(`❌ Você precisa de ${price} golds para comprar esse pet!`);
+        // garante usuário no golds.json
+        if (!goldDB[sender]) {
+            goldDB[sender] = { gold: 0 };
         }
 
-        // garante array de pets
+        let userGold = goldDB[sender].gold;
+
+        if (userGold < price) {
+            return reply(`❌ Você precisa de ${price} golds. Você tem ${userGold}.`);
+        }
+
+        // database de pets
+        let db = JSON.parse(fs.readFileSync('./database.json'));
+
+        if (!db.users) db.users = {};
+        if (!db.users[sender]) db.users[sender] = { pets: [] };
         if (!db.users[sender].pets) db.users[sender].pets = [];
 
-        // 🔥 impede duplicado
+        // impede duplicado
         let jaTem = db.users[sender].pets.find(p => p.id == pet.id);
-
         if (jaTem) {
             return reply(`⚠️ Você já possui o pet *${pet.nome}*.`);
         }
 
         // remove gold
-        db.users[sender].gold -= price;
+        goldDB[sender].gold -= price;
 
         // adiciona pet
         db.users[sender].pets.push(pet);
 
+        // salva arquivos
+        fs.writeFileSync(goldPath, JSON.stringify(goldDB, null, 2));
         fs.writeFileSync('./database.json', JSON.stringify(db, null, 2));
 
-        return reply(`🐾 Você comprou o pet *${pet.nome}* por ${price} golds!`);
+        return reply(`🐾 Você comprou *${pet.nome}* por ${price} golds!`);
 
     } catch (err) {
         console.log(err);
