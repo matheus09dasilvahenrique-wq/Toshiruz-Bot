@@ -499,6 +499,10 @@ function menufig(prefix, NomeDoBot) {
 const menuFIG = require("./dono/menus/menufig.js");
 return menuFIG(prefix, NomeDoBot);
 }
+function menurpg(prefix) {
+const menurpg = require("./dono/menus/menurpg.js");
+return menurpg(prefix);
+}
 function menuhentai(prefix, NomeDoBot) {
 const menuHENTAI = require("./dono/menus/menuhentai.js");
 return menuHENTAI(prefix, NomeDoBot);
@@ -1113,6 +1117,37 @@ sourceUrl: ''
     {
         image: { url: fotomenu },
         caption: menuLogos,
+        mentions: [sender],
+        contextInfo: {
+            forwardingScore: 100000,
+            isForwarded: true,
+            forwardedNewsletterMessageInfo: {
+                newsletterJid: "120363405476475431@newsletter",
+                newsletterName: NomeDoBot
+            }
+        }
+    },
+    { quoted: selometa }
+);
+            } catch (e) {
+            reagir('❌');
+            console.log('Erro ao enviar o menu:', e)
+            reply('❌ Erro ao enviar o menu');
+            }
+            break;
+                case 'menurpg':
+            case 'rpg':
+            if (!isGroup) return reply(enviar.msg.group);
+
+          try {
+          reagir('✔');
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          const menurpg = menurpg(prefix);
+            await sock.sendMessage(
+    from,
+    {
+        image: { url: fotomenu },
+        caption: menurpg,
         mentions: [sender],
         contextInfo: {
             forwardingScore: 100000,
