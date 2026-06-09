@@ -255,7 +255,7 @@ function copiarArquivos(origem, destino) {
 async function atualizarBot() {
 
     const configs = JSON.parse(
-        fs.readFileSync("./dono/configs.json")
+        fs.readFileSync("./dono/configs.json", "utf8")
     );
 
     const versaoLocal = configs.version;
@@ -265,15 +265,19 @@ async function atualizarBot() {
     ).data;
 
     const versaoGithub = dadosGithub.version;
-    const novidades =
-        dadosGithub.mensagem ||
-        "Sem informações.";
+    const novidades = dadosGithub.mensagem || "Sem informações.";
+
+    console.log("Versão Local:", versaoLocal);
+    console.log("Versão GitHub:", versaoGithub);
+
+    if (!versaoGithub) {
+        throw new Error("Version não encontrada no GitHub.");
+    }
 
     if (versaoGithub === versaoLocal) {
         return {
             status: false,
-            mensagem:
-                "✅ Você já está na última versão."
+            mensagem: "✅ Você já está na última versão."
         };
     }
 
@@ -289,9 +293,7 @@ async function atualizarBot() {
         resposta.data
     );
 
-    const zip = new AdmZip(
-        "./update.zip"
-    );
+    const zip = new AdmZip("./update.zip");
 
     zip.extractAllTo(
         "./temp_update",
@@ -313,7 +315,9 @@ async function atualizarBot() {
         "Download",
         "package.json",
         "package-lock.json",
-        "start.sh"
+        "start.sh",
+        "update.zip",
+        "temp_update"
     ];
 
     const arquivosRaiz =
@@ -321,16 +325,14 @@ async function atualizarBot() {
 
     for (const item of arquivosRaiz) {
 
-        if (
-            protegidos.includes(item) ||
-            item === "temp_update" ||
-            item === "update.zip"
-        ) continue;
+        if (protegidos.includes(item))
+            continue;
 
         fs.rmSync(item, {
             recursive: true,
             force: true
         });
+
     }
 
     copiarArquivos(
@@ -338,8 +340,7 @@ async function atualizarBot() {
         "./"
     );
 
-    configs.version =
-        versaoGithub;
+    configs.version = versaoGithub;
 
     fs.writeFileSync(
         "./dono/configs.json",
@@ -348,6 +349,11 @@ async function atualizarBot() {
             null,
             2
         )
+    );
+
+    console.log(
+        "Versão atualizada para:",
+        versaoGithub
     );
 
     fs.rmSync(
@@ -365,7 +371,6 @@ async function atualizarBot() {
     return {
         status: true,
         versao: versaoGithub,
-        novidades,
         mensagem:
 `🚀 Atualização encontrada!
 
@@ -373,6 +378,7 @@ async function atualizarBot() {
 
 ${novidades}`
     };
+
 }
 // Pega data de hoje como "2025-11-26"
 function dataHoje() {
@@ -2878,59 +2884,50 @@ case 'nickstilo': {
 }
 break;
                 case 'update': {
-if (!isDono) return;
 
-reply("🔄 Verificando atualização...");
+if (!isDono)
+    return reply("❌ Apenas o dono pode usar.");
 
-const resultado = await atualizarBot();
+try {
 
-reply(resultado.mensagem);
+    await reply(
+        "🔄 Verificando atualizações..."
+    );
 
-if (resultado.status) {
+    const resultado =
+        await atualizarBot();
 
-    reply("⬇️ Instalando atualização...");
-    reply("♻️ Reiniciando o bot...");
+    await reply(
+        resultado.mensagem
+    );
+
+    if (!resultado.status)
+        break;
+
+    await reply(
+        "✅ Atualização concluída!"
+    );
+
+    await reply(
+        "♻️ Reiniciando em 5 segundos..."
+    );
 
     setTimeout(() => {
         process.exit(0);
-    }, 3000);
+    }, 5000);
+
+} catch(err) {
+
+    console.log(err);
+
+    reply(
+`❌ Erro ao atualizar:
+
+${err.message}`
+    );
 
 }
 
-}
-break;
-case 'addvip': {
-    if (!isGroup) return reply(enviar.msg.group);
-    if (!isDono) return reply(enviar.msg.dono);
-
-    const mencionado = info.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
-    const respondido = info.message?.extendedTextMessage?.contextInfo?.participant;
-    let alvo = mencionado || respondido || args[0];
-
-    if (!alvo) return reply("👑 Marque alguém, responda uma mensagem ou insira o número.");
-
-    if (!alvo.includes("@")) alvo = alvo.replace(/\D+/g, "") + "@s.whatsapp.net";
-
-    if (vipData.includes(alvo)) return reply("💎 Este usuário *já é VIP.*");
-
-    vipData.push(alvo);
-    saveVip();
-
-    await reply(`👑 _*Usuário ${alvo.split("@")[0]} agora é VIP, parabéns!!!*_`);
-}
-break;
-case 'listavip': {
-    if (vipData.length < 1) return reply("Nenhum usuário é VIP no momento...");
-
-    let texto = "👑 *LISTA DE USUÁRIOS VIP*\n\n";
-    vipData.forEach((id, i) => {
-        texto += `${i + 1}. @${id.split("@")[0]}\n`;
-    });
-
-    await sock.sendMessage(from, { 
-        text: texto, 
-        mentions: vipData 
-    }, { quoted: selometa });
 }
 break;
 case 'delvip': {
