@@ -1,3 +1,4 @@
 {
-  "version": "1.0.1"
+    "version": "1.0.2",
+    "mensagem": "✨ Comando Play adicionado! Primeiro compre uma key no site da api, abra o google e pesquise 'yuta apis' e entre no primeiro link, depois gere sua key e va em ./dono/configs.json e cole sua key la! Bom dia."
 }
