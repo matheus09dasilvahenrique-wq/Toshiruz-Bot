@@ -493,7 +493,7 @@ const saveAntiLink = () => {
 };
 function menu(pushname, NickDono, dataFormatada, prefix, NomeDoBot) {
     const gerarMenu = require("./dono/menus/menu.js");
-    return gerarMenu(pushname, NickDono, dataFormatada, prefix,NomeDoBot ); 
+    return gerarMenu(pushname, NickDono, dataFormatada, prefix, NomeDoBot ); 
 }
 function menufig(prefix, NomeDoBot) {
 const menuFIG = require("./dono/menus/menufig.js");
@@ -1048,7 +1048,7 @@ sourceUrl: ''
                   }
              }
       }, { quoted: selometa });
-          const textMen = menu(prefix, NomeDoBot, NickDono, horaFormatada, sender, saudacao);
+          const textMen = menu(pushname, NickDono, dataFormatada, prefix, NomeDoBot);
             await sock.sendMessage(
     from,
     {
