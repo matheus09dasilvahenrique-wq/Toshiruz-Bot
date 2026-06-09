@@ -2057,8 +2057,8 @@ break;
 break;
                 case 'comprarpet': {
     try {
-        const petPath = path.join(__dirname, 'pet.json');
-        const precoPath = path.join(__dirname, 'precos.json');
+        const petPath = path.join(__dirname, './assets/pet.json');
+        const precoPath = path.join(__dirname, './assets/precos.json');
 
         let pets = JSON.parse(fs.readFileSync(petPath));
         let precos = JSON.parse(fs.readFileSync(precoPath));
@@ -2079,16 +2079,16 @@ break;
             return reply("❌ Esse pet não existe!");
         }
 
-        const price = precos.pet; // 25 golds
+        const price = precos.pet;
 
         if (userGold < price) {
             return reply(`❌ Você precisa de ${price} golds para comprar esse pet!`);
         }
 
-        // garante array de pets do usuário
+        // garante array de pets
         if (!db.users[sender].pets) db.users[sender].pets = [];
 
-        // 🔥 VERIFICA SE JÁ TEM O PET
+        // 🔥 impede duplicado
         let jaTem = db.users[sender].pets.find(p => p.id == pet.id);
 
         if (jaTem) {
