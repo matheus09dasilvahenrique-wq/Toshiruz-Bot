@@ -1,7 +1,7 @@
 {
-    "version": "1.0.3",
-    "mensagem": "✨ `Update 1.0.3`Lancada!
+    "version": "1.0.4",
+    "mensagem": "✨ `Update 1.0.4`Lancada!
     
-    . Comandos como: rank, saldo e oqueoque foram implementados!
-    . Peco que todos vao em ./assets do toshiruz e crie uma pasta de texto la, ponha um {} dentro da pasta e salve como 'golds.json' sem as aspas."
+    . Comandos como: cacapalavras
+    . Peco que todos vao em ./assets do toshiruz e crie uma pasta de texto la, ponha um {} dentro da pasta e salve como 'golds.json' sem as aspas, se ja tiver feito nao precisa repetir!."
 }
