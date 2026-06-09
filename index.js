@@ -1525,6 +1525,34 @@ reply(
 
 }
 break;
+                case 'responder': {
+
+if (!cacaPalavras[sender])
+return reply('Você não possui nenhum caça-palavras ativo.');
+
+const resposta = q.trim().toLowerCase();
+const correta = cacaPalavras[sender].toLowerCase();
+
+if (resposta === correta) {
+
+addGold(sender, 10);
+
+delete cacaPalavras[sender];
+
+reply(
+`🎉 Você acertou!\n\n` +
+`💰 +10 Golds\n` +
+`🏦 Saldo atual: ${getGold(sender)}`
+);
+
+} else {
+
+reply('❌ Resposta incorreta.');
+
+}
+
+}
+break;
 case 'gemini': {
     try {
         if (!isGroup) return reply(enviar.msg.group);
