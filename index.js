@@ -33,6 +33,7 @@ const { TOKEN } = require('./dono/configs.json');
 const TOKEN_API = 'TOKEN-API-MATH'
 const API_TOSHI = 'https://bubbly-dedication-production-5925.up.railway.app'
 const fs = require('fs');
+const cacaPalavras = {};
 const jogoPalavras = {};
 let sock;
 function carregarGold() {
@@ -83,6 +84,34 @@ const palavras = [
 "sol","lua","estrela","planeta","galáxia",
 "praia","montanha","rio","floresta","deserto",
 "pizza","hambúrguer","lasanha","sorvete","chocolate"
+];
+const palavrasCaca = [
+"abacate","abelha","abismo","academia","acordeao","adesivo","advogado","aeroporto","agenda","agulha",
+"alface","algodao","alicate","almofada","amarelo","amendoim","amizade","anel","animal","antena",
+"apartamento","apito","aranha","arco","areia","armario","arvore","asa","atleta","aviador",
+"bacalhau","bala","banana","bandeira","barco","batata","bebida","beijaflor","bicicleta","biblioteca",
+"blusa","borboleta","bosque","brasil","brinquedo","cabelo","cabide","cachorro","cadeira","caderno",
+"cafeteira","caixa","calendario","camelo","caminhao","camisa","caneta","canhao","capivara","caracol",
+"carro","cartao","castelo","cavalo","cebola","celular","cenoura","chave","chinelo","chocolate",
+"chuva","cidade","cimento","cinema","circo","computador","coracao","corrida","cortina","cozinha",
+"crianca","cristal","crocodilo","cultura","dado","danca","deserto","diamante","dinossauro","diretor",
+"doce","dragao","elefante","energia","escada","escola","escova","espelho","estrela","fantasia",
+"farol","fazenda","ferramenta","figura","floresta","fogueira","folha","formiga","foguete","framboesa",
+"fruta","futebol","galaxia","garfo","geladeira","girafa","guitarra","hamburguer","helicoptero","hospital",
+"igreja","ilha","impressora","internet","janela","jardim","joaninha","jornal","jumento","laranja",
+"leao","livro","locomotiva","lua","macaco","madeira","maleta","manga","mapa","marte",
+"martelo","melancia","mesa","microfone","milho","montanha","morango","moto","museu","navio",
+"neve","nuvem","oculos","oceano","onibus","orquestra","ovelha","palhaco","panela","papagaio",
+"parque","passaro","peixe","pente","perfume","piano","pipoca","planeta","porta","praia",
+"presente","professor","queijo","quintal","radar","rainha","relogio","revista","rio","robô",
+"sabonete","sacola","sapato","satelite","semente","sereia","sino","sorvete","submarino","suco",
+"telefone","teclado","telescopio","tesoura","tigre","tomate","tornado","trator","trem","tubarão",
+"universo","urso","uva","vassoura","vela","violao","vulcao","xadrez","xicara","zebra",
+"abacaxi","acerola","aguia","almoco","amora","anelado","aranha","ave","azeitona","balanca",
+"bambu","berinjela","boi","bolacha","boneca","cacto","canario","canivete","capa","cereja",
+"cofre","colher","coruja","couve","cravo","diametro","escorpiao","esquilo","faisao","foca",
+"garrafa","golfinho","hortela","jabuti","jacare","kiwi","lagarto","lampada","limao","lontra",
+"mamute","maracuja","mexerica","nariz","ouriço","pato","pera","pessego","pinguim","raposa"
 ];
 const caminhoAluguel = './assets/aluguel.json';
 
@@ -1473,6 +1502,27 @@ case 'totag': {
     }
 
     reply("⚠ Não consegui identificar o tipo de mensagem respondida.");
+}
+break;
+                case 'cacapalavras': {
+
+const palavra =
+palavrasCaca[Math.floor(Math.random() * palavrasCaca.length)];
+
+const embaralhada = palavra
+.split('')
+.sort(() => Math.random() - 0.5)
+.join('');
+
+cacaPalavras[sender] = palavra;
+
+reply(
+`🔎 CAÇA-PALAVRAS\n\n` +
+`Descubra a palavra:\n` +
+`🔤 ${embaralhada}\n\n` +
+`Use:\n!responder palavra`
+);
+
 }
 break;
 case 'gemini': {
