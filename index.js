@@ -178,7 +178,7 @@ async function atualizarBot() {
         "media",
         "node_modules",
         "assets"
-        "keycheck.json"
+        "keycheck.js"
         "Download"
         "package.json"
         "package-lock.json"
