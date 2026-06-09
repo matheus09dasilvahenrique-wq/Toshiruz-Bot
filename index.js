@@ -2055,6 +2055,62 @@ break;
     reply(`✅ Grupo registrado por ${dias} dias.`);
 }
 break;
+                case 'comprarpet': {
+    try {
+        const petPath = path.join(__dirname, 'pet.json');
+        const precoPath = path.join(__dirname, 'precos.json');
+
+        let pets = JSON.parse(fs.readFileSync(petPath));
+        let precos = JSON.parse(fs.readFileSync(precoPath));
+
+        let userGold = db.users[sender].gold || 0;
+        let args = q?.trim();
+
+        if (!args) {
+            return reply("❌ Digite o nome ou ID do pet que deseja comprar!");
+        }
+
+        let pet = pets.find(p =>
+            p.nome.toLowerCase() === args.toLowerCase() ||
+            p.id == args
+        );
+
+        if (!pet) {
+            return reply("❌ Esse pet não existe!");
+        }
+
+        const price = precos.pet; // 25 golds
+
+        if (userGold < price) {
+            return reply(`❌ Você precisa de ${price} golds para comprar esse pet!`);
+        }
+
+        // garante array de pets do usuário
+        if (!db.users[sender].pets) db.users[sender].pets = [];
+
+        // 🔥 VERIFICA SE JÁ TEM O PET
+        let jaTem = db.users[sender].pets.find(p => p.id == pet.id);
+
+        if (jaTem) {
+            return reply(`⚠️ Você já possui o pet *${pet.nome}*.`);
+        }
+
+        // remove gold
+        db.users[sender].gold -= price;
+
+        // adiciona pet
+        db.users[sender].pets.push(pet);
+
+        fs.writeFileSync('./database.json', JSON.stringify(db, null, 2));
+
+        return reply(`🐾 Você comprou o pet *${pet.nome}* por ${price} golds!`);
+
+    } catch (err) {
+        console.log(err);
+        reply("❌ Erro ao comprar pet.");
+    }
+}
+break;
                 case 'rm_aluguel': {
     if (!isDono) return;
 
