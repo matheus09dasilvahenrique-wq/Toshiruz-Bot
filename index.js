@@ -177,11 +177,11 @@ async function atualizarBot() {
         "dono",
         "media",
         "node_modules",
-        "assets"
-        "keycheck.js"
-        "Download"
-        "package.json"
-        "package-lock.json"
+        "assets",
+        "keycheck.js",
+        "Download",
+        "package.json",
+        "package-lock.json",
         "start.sh"
     ];
 
