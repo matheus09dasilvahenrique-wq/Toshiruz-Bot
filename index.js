@@ -3149,6 +3149,45 @@ case 'ffavatar': {
     }
 }
 break;
+case 'play': {
+    try {
+        if (!args[0]) return sock.sendMessage(from, { text: "Cadê o nome da música?\nEx:!play mc hariel" }, { quoted: info })
+        
+        await sock.sendMessage(from, { react: { text: "⌛", key: info.key } })
+        
+        let q = args.join(' ')
+        const { status, resultado } = await fetchJson(`https://yuta-apis.xyz/api/pesquisas/yt-search?apitoken=${TOKEN}&query=${encodeURIComponent(q.trim())}`)
+        
+        if (!status ||!resultado?.length) {
+            return sock.sendMessage(from, { text: "❌ Nenhum resultado encontrado pra essa pesquisa 😢" }, { quoted: info })
+        }
+        
+        const video = resultado[0].resultados
+        const { title, description, url, thumbnail, duration, views, author } = video
+        
+        const msgText = `*Toshi Uploads. . . • Downloads*\n\n📝 *Título:* ${title}\n👤 *Autor:* ${author?.name || 'Desconhecido'}\n📺 *Canal:* ${author?.url || 'N/A'}\n⏱️ *Duração:* ${duration?.timestamp || '❌ Não disponível'}\n👁️ *Visualizações:* ${views || '0'}\n🔗 *Link:* ${url}\n📌 *Descrição:* ${description?.slice(0, 100) || 'N/A'}`
+        
+        await sock.sendMessage(from, { image: { url: thumbnail }, caption: msgText }, { quoted: info })
+        
+        const audio = await getBuffer(`https://yuta-apis.xyz/api/downloads/ytaudio2?apitoken=${TOKEN}&url=${encodeURIComponent(url)}`)
+        
+        if (!audio) return sock.sendMessage(from, { text: "❌ Não foi possível baixar o áudio deste vídeo 😢" }, { quoted: info })
+        
+        await sock.sendMessage(from, { 
+            audio: audio, 
+            mimetype: "audio/mpeg", 
+            ptt: false, 
+            fileName: `${title}.mp3`
+        }, { quoted: info })
+        
+        await sock.sendMessage(from, { react: { text: "✅", key: info.key } })
+        
+    } catch (e) {
+        console.log("Erro em play:", e)
+        sock.sendMessage(from, { text: "❌ Erro ao processar.\n- Verifica se seu token da Yuta API ainda tem requests: https://yuta-apis.xyz" }, { quoted: info })
+    }
+}
+break;
 case 'pinterest':
 case 'pin': {
     try {
