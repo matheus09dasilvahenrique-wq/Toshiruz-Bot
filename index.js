@@ -33,7 +33,57 @@ const { TOKEN } = require('./dono/configs.json');
 const TOKEN_API = 'TOKEN-API-MATH'
 const API_TOSHI = 'https://bubbly-dedication-production-5925.up.railway.app'
 const fs = require('fs');
+const jogoPalavras = {};
 let sock;
+function carregarGold() {
+    if (!fs.existsSync('./assets/golds.json')) {
+        fs.writeFileSync('./assets/golds.json', '{}');
+    }
+    return JSON.parse(fs.readFileSync('./assets/golds.json'));
+}
+
+function salvarGold(db) {
+    fs.writeFileSync('./assets/golds.json', JSON.stringify(db, null, 2));
+}
+
+function addGold(user, quantidade) {
+    let db = carregarGold();
+
+    if (!db[user]) {
+        db[user] = {
+            gold: 0
+        };
+    }
+
+    db[user].gold += quantidade;
+
+    salvarGold(db);
+}
+
+function getGold(user) {
+    let db = carregarGold();
+
+    if (!db[user]) {
+        db[user] = {
+            gold: 0
+        };
+        salvarGold(db);
+    }
+
+    return db[user].gold;
+}
+const palavras = [
+"cachorro","gato","cavalo","elefante","girafa",
+"leão","tigre","urso","macaco","coelho",
+"banana","maçã","laranja","abacaxi","uva",
+"carro","moto","avião","ônibus","bicicleta",
+"computador","teclado","mouse","celular","internet",
+"futebol","basquete","vôlei","natação","corrida",
+"escola","professor","aluno","caderno","caneta",
+"sol","lua","estrela","planeta","galáxia",
+"praia","montanha","rio","floresta","deserto",
+"pizza","hambúrguer","lasanha","sorvete","chocolate"
+];
 const caminhoAluguel = './assets/aluguel.json';
 
 function carregarAluguel() {
@@ -646,7 +696,15 @@ END:VCARD`,
         }
       );
     };
+// Sistema de gold
+      let db = carregarGold();
 
+if (!db[sender]) {
+    db[sender] = {
+        gold: 0
+    };
+    salvarGold(db);
+}
     // ==========================
     // SISTEMA DE ALUGUEL
     // ==========================
@@ -1479,6 +1537,88 @@ case 'tiktok': {
         console.log(e);
         reply('❌ Erro ao baixar o vídeo.');
     }
+}
+break;
+                case 'oqueoque': {
+
+const palavra = palavras[
+Math.floor(Math.random() * palavras.length)
+];
+
+const embaralhada = palavra
+.split('')
+.sort(() => Math.random() - 0.5)
+.join('');
+
+jogoPalavras[sender] = palavra;
+
+reply(
+`🎮 O QUE É O QUE?\n\n` +
+`Descubra a palavra:\n\n` +
+`🔤 ${embaralhada}\n\n` +
+`Use:\n!resposta palavra`
+);
+
+}
+break;
+                case 'resposta': {
+
+if (!jogoPalavras[sender])
+return reply('Você não iniciou um jogo.');
+
+const resposta =
+q.trim().toLowerCase();
+
+const correta =
+jogoPalavras[sender]
+.toLowerCase();
+
+if (resposta === correta) {
+
+addGold(sender, 5);
+
+delete jogoPalavras[sender];
+
+reply(
+`✅ Acertou!\n` +
+`💰 +5 Golds\n\n` +
+`Saldo: ${getGold(sender)}`
+);
+
+} else {
+
+reply('❌ Palavra incorreta.');
+}
+
+}
+break;
+                case 'saldo': {
+
+reply(
+`💰 Seu saldo:\n\n` +
+`${getGold(sender)} Golds`
+);
+
+}
+break;
+                case 'ranking': {
+
+let db = carregarGold();
+
+let ranking = Object.entries(db)
+.sort((a, b) => b[1].gold - a[1].gold)
+.slice(0, 10);
+
+let texto = '🏆 TOP 10 RICOS\n\n';
+
+ranking.forEach((u, i) => {
+texto +=
+`${i + 1}° ${u[0].split('@')[0]}\n` +
+`💰 ${u[1].gold} Golds\n\n`;
+});
+
+reply(texto);
+
 }
 break;
 case 'gerarcpf':
