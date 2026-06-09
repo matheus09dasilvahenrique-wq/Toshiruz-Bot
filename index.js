@@ -37,9 +37,11 @@ const fs = require('fs');
 const path = require('node:path');
 const cacaPalavras = {};
 const jogoPalavras = {};
-const petsPath = path.join(__dirname, './assets/pet.json');
-const userPetsPath = path.join(__dirname, './assets/userpets.json');
-
+function getDB() {
+    return fs.existsSync('./assets/userpets.json')
+        ? JSON.parse(fs.readFileSync('./assets/userpets.json'))
+        : {};
+}
 let pets = JSON.parse(fs.readFileSync(petsPath));
 
 let userPets = fs.existsSync(userPetsPath)
@@ -2069,11 +2071,33 @@ break;
     reply(`✅ Grupo registrado por ${dias} dias.`);
 }
 break;
-            case 'comprarpet': {
+            case 'adotarpet': {
+    let db = getDB();
+
+    if (!db[sender]) {
+        db[sender] = { pets: [] };
+    }
+
+    let tem = db[sender].pets.find(p => p.id === 1);
+
+    if (tem) return reply("❌ Você já adotou seu pet inicial.");
+
+    db[sender].pets.push({
+        id: 1,
+        nome: "Doguinho",
+        raridade: "comum",
+        valor: 5
+    });
+
+    fs.writeFileSync('./assets/userpets.json', JSON.stringify(db, null, 2));
+
+    return reply("🐾 Você adotou seu primeiro pet: Doguinho!");
+}
+break;
+                case 'comprarpet': {
     const pets = JSON.parse(fs.readFileSync('./assets/pet.json'));
     const golds = JSON.parse(fs.readFileSync('./assets/golds.json'));
-
-    let db = getPetsDB();
+    let db = getDB();
 
     let pet = pets.find(p =>
         p.nome.toLowerCase() === q?.toLowerCase() || p.id == q
@@ -2082,7 +2106,7 @@ break;
     if (!pet) return reply("❌ Pet não encontrado!");
 
     if (!golds[sender]) golds[sender] = { gold: 0 };
-    if (!db[sender]) db[sender] = { userId: sender, pets: [] };
+    if (!db[sender]) db[sender] = { pets: [] };
 
     if (golds[sender].gold < pet.preco)
         return reply("❌ Gold insuficiente!");
@@ -2090,190 +2114,76 @@ break;
     if (db[sender].pets.find(p => p.id == pet.id))
         return reply("⚠️ Você já tem esse pet!");
 
-    let newPet = {
+    db[sender].pets.push({
         id: pet.id,
         nome: pet.nome,
-        hp: pet.hp,
-        maxHp: pet.hp,
-        atk: pet.atk,
-        def: pet.def,
-        level: 1,
-        xp: 0
-    };
+        raridade: pet.raridade,
+        valor: pet.preco
+    });
 
     golds[sender].gold -= pet.preco;
-    db[sender].pets.push(newPet);
 
-    fs.writeFileSync('./assets/golds.json', JSON.stringify(golds, null, 2));
     fs.writeFileSync('./assets/userpets.json', JSON.stringify(db, null, 2));
+    fs.writeFileSync('./assets/golds.json', JSON.stringify(golds, null, 2));
 
     return reply(`🐾 Você comprou ${pet.nome}!`);
 }
 break;
-                case 'meuspets': {
-    const userpets = fs.existsSync('./assets/userpets.json')
-        ? JSON.parse(fs.readFileSync('./assets/userpets.json'))
-        : {};
-
-    let data = userpets[sender];
-
-    if (!data || !data.pets.length)
-        return reply("❌ Você não tem pets.");
-
-    let txt = `🐾 *SEUS PETS*\n\n`;
-
-    data.pets.forEach((p, i) => {
-        txt += `${i + 1}. ${p.nome} ❤️${p.hp}/${p.maxHp} ⚔️${p.atk}\n`;
-    });
-
-    return reply(txt);
-}
-break;
-                case 'listapets': {
-    const pets = JSON.parse(fs.readFileSync('./assets/pet.json'));
-
-    let txt = `🛒 *LOJA DE PETS*\n\n`;
-
-    pets.forEach(p => {
-        txt += `🐾 ${p.nome}\n💰 ${p.preco}\n❤️ ${p.hp} ⚔️ ${p.atk} 🛡️ ${p.def}\n\n`;
-    });
-
-    return reply(txt);
-}
-break;
-                case 'batalhar': {
-    let db = getPetsDB();
+                case 'venderpet': {
+    let db = getDB();
 
     if (!db[sender] || !db[sender].pets.length)
         return reply("❌ Você não tem pets.");
 
-    let user = mentionedJid?.[0] || q;
-    if (!user)
-        return reply("❌ Marque alguém para batalhar.");
-
-    if (!db[user] || !db[user].pets.length)
-        return reply("❌ Esse usuário não tem pets.");
-
-    global.batalhas[user] = {
-        challenger: sender,
-        target: user,
-        step: 'confirm'
-    };
-
-    return reply(`⚔️ Desafio enviado!\n\nO usuário precisa aceitar.`);
-}
-break;
-                case 'aceitar': {
-    let db = getPetsDB();
-
-    let battle = Object.values(global.batalhas)
-        .find(b => b.target === sender && b.step === 'confirm');
-
-    if (!battle)
-        return reply("❌ Nenhum desafio encontrado.");
-
-    battle.step = 'choose_challenger';
-
-    return reply("⚔️ Desafio aceito!\n\nAgora o DESAFIANTE escolha seu pet: batalhar2 <número>");
-}
-break;
-                case 'recusar': {
-    let battleKey = Object.keys(global.batalhas)
-        .find(k => global.batalhas[k].target === sender);
-
-    if (!battleKey)
-        return reply("❌ Nenhum desafio.");
-
-    delete global.batalhas[battleKey];
-
-    return reply("❌ Desafio recusado.");
-}
-break;
-                case 'batalhar2': {
-    let db = getPetsDB();
-
-    let battle = Object.values(global.batalhas)
-        .find(b => b.challenger === sender && b.step === 'choose_challenger');
-
-    if (!battle)
-        return reply("❌ Nenhuma batalha ativa.");
-
-    let pets = db[sender].pets;
-
     let index = parseInt(q) - 1;
 
-    if (!pets[index])
+    if (isNaN(index) || !db[sender].pets[index])
         return reply("❌ Pet inválido.");
 
-    battle.challengerPet = pets[index];
+    let pet = db[sender].pets[index];
 
-    battle.step = 'choose_target';
+    let golds = JSON.parse(fs.readFileSync('./assets/golds.json'));
 
-    return reply("⚔️ Agora o oponente escolha seu pet: batalhar3 <número>");
+    if (!golds[sender]) golds[sender] = { gold: 0 };
+
+    let valor = Math.floor(pet.valor / 2);
+
+    golds[sender].gold += valor;
+
+    db[sender].pets.splice(index, 1);
+
+    fs.writeFileSync('./assets/userpets.json', JSON.stringify(db, null, 2));
+    fs.writeFileSync('./assets/golds.json', JSON.stringify(golds, null, 2));
+
+    return reply(`💸 Você vendeu ${pet.nome} por ${valor} golds!`);
 }
 break;
-                case 'batalhar3': {
-    let db = getPetsDB();
+                case 'rank_pet': {
+    let db = getDB();
 
-    let battle = Object.values(global.batalhas)
-        .find(b => b.target === sender && b.step === 'choose_target');
+    let all = [];
 
-    if (!battle)
-        return reply("❌ Nenhuma batalha ativa.");
+    Object.entries(db).forEach(([user, data]) => {
+        (data.pets || []).forEach(p => {
+            all.push({
+                owner: user,
+                nome: p.nome,
+                valor: p.valor || 0
+            });
+        });
+    });
 
-    let pets = db[sender].pets;
+    if (!all.length) return reply("❌ Nenhum pet encontrado.");
 
-    let index = parseInt(q) - 1;
+    all.sort((a, b) => b.valor - a.valor);
 
-    if (!pets[index])
-        return reply("❌ Pet inválido.");
+    let txt = `🏆 *RANK DE PETS MAIS RAROS*\n\n`;
 
-    battle.targetPet = pets[index];
+    all.slice(0, 10).forEach((p, i) => {
+        txt += `${i + 1}. ${p.nome} - 💰 ${p.valor}\n`;
+    });
 
-    // 🧠 SIMULAÇÃO DE BATALHA POR STATS
-
-    let a = battle.challengerPet;
-    let b = battle.targetPet;
-
-    let scoreA = a.hp + a.atk + a.def + a.level * 5;
-    let scoreB = b.hp + b.atk + b.def + b.level * 5;
-
-    let result =
-        scoreA > scoreB
-            ? `🏆 ${battle.challenger} VENCEU!`
-            : scoreA < scoreB
-            ? `🏆 ${battle.target} VENCEU!`
-            : `🤝 EMPATE!`;
-
-    delete global.batalhas[battle.target];
-
-    return reply(
-        `⚔️ *BATALHA FINALIZADA*\n\n` +
-        `🐾 ${a.nome} vs ${b.nome}\n\n` +
-        result
-    );
-}
-break;
-                case 'treinarpet': {
-    let xp = Math.floor(Math.random() * 50) + 10;
-    return reply(`📈 Seu pet treinou e ganhou ${xp} XP!`);
-}
-break;
-                case 'statuspet': {
-    const userpets = JSON.parse(fs.readFileSync('./assets/userpets.json'));
-
-    let pet = userpets[sender]?.[0];
-
-    if (!pet) return reply("❌ Você não tem pet.");
-
-    return reply(
-        `🐾 *STATUS DO PET*\n\n` +
-        `Nome: ${pet.nome}\n` +
-        `ID: ${pet.id}\n` +
-        `HP: 100\n` +
-        `Ataque: 20\n` +
-        `Defesa: 10`
-    );
+    return reply(txt);
 }
 break;
                 case 'rm_aluguel': {
