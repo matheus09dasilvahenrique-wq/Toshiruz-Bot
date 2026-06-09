@@ -182,6 +182,7 @@ async function atualizarBot() {
         "Download"
         "package.json"
         "package-lock.json"
+        "start.sh"
     ];
 
     const arquivosRaiz =
