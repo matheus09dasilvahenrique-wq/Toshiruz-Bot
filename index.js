@@ -2185,6 +2185,46 @@ break;
     }
 }
 break;
+                case 'batalhar': {
+    const userpets = JSON.parse(fs.readFileSync('./assets/userpets.json'));
+
+    if (!userpets[sender] || userpets[sender].length === 0)
+        return reply("❌ Você não tem pet.");
+
+    let inimigo = userpets[sender][0];
+
+    let dano = Math.floor(Math.random() * 20) + 5;
+    let defesa = Math.floor(Math.random() * 10);
+
+    let resultado = dano - defesa;
+
+    if (resultado <= 0) resultado = 1;
+
+    return reply(`⚔️ Batalha iniciada!\n\n🐾 Seu pet causou ${resultado} de dano!`);
+}
+break;
+                case 'treinarpet': {
+    let xp = Math.floor(Math.random() * 50) + 10;
+    return reply(`📈 Seu pet treinou e ganhou ${xp} XP!`);
+}
+break;
+                case 'statuspet': {
+    const userpets = JSON.parse(fs.readFileSync('./assets/userpets.json'));
+
+    let pet = userpets[sender]?.[0];
+
+    if (!pet) return reply("❌ Você não tem pet.");
+
+    return reply(
+        `🐾 *STATUS DO PET*\n\n` +
+        `Nome: ${pet.nome}\n` +
+        `ID: ${pet.id}\n` +
+        `HP: 100\n` +
+        `Ataque: 20\n` +
+        `Defesa: 10`
+    );
+}
+break;
                 case 'rm_aluguel': {
     if (!isDono) return;
 
