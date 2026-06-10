@@ -34,10 +34,10 @@ const TOKEN_API = 'TOKEN-API-MATH'
 const API_TOSHI = 'https://bubbly-dedication-production-5925.up.railway.app'
 global.batalhas = global.batalhas || {};
 const fs = require('fs');
+const path = require('path');
 const petsPath = path.join(__dirname, './assets/pet.json');
 const userPetsPath = path.join(__dirname, './assets/userpets.json');
 const goldsPath = path.join(__dirname, './assets/golds.json');
-const path = require('node:path');
 const cacaPalavras = {};
 const jogoPalavras = {};
 function getDB() {
