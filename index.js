@@ -499,9 +499,9 @@ function menufig(prefix, NomeDoBot) {
 const menuFIG = require("./dono/menus/menufig.js");
 return menuFIG(prefix, NomeDoBot);
 }
-function menurpg(prefix) {
-const menurpg = require("./dono/menus/menurpg.js");
-return menurpg(prefix);
+function menuRPG(prefix) {
+const menuRpg = require("./dono/menus/menurpg.js");
+return menuRpg(prefix);
 }
 function menuhentai(prefix, NomeDoBot) {
 const menuHENTAI = require("./dono/menus/menuhentai.js");
@@ -1142,7 +1142,7 @@ sourceUrl: ''
           try {
           reagir('✔');
           await new Promise(resolve => setTimeout(resolve, 2000));
-          const menurpg = menurpg(prefix);
+          const menurpg = menuRPG(prefix);
             await sock.sendMessage(
     from,
     {
@@ -1744,68 +1744,6 @@ case 'gemini': {
     }
 }
 break;
-                case 'trabalho': {
-    const fs = require('fs');
-
-    const goldsPath = './assets/golds.json';
-    const trabalhoPath = './assets/trabalho.json';
-
-    let golds = fs.existsSync(goldsPath)
-        ? JSON.parse(fs.readFileSync(goldsPath))
-        : {};
-
-    let trabalho = fs.existsSync(trabalhoPath)
-        ? JSON.parse(fs.readFileSync(trabalhoPath))
-        : {};
-
-    const cooldown = 8 * 60 * 60 * 1000; // 8 horas
-    const recompensa = 60;
-
-    if (!golds[sender]) {
-        golds[sender] = {
-            gold: 0
-        };
-    }
-
-    const agora = Date.now();
-
-    if (trabalho[sender]) {
-        const restante = cooldown - (agora - trabalho[sender]);
-
-        if (restante > 0) {
-            const horas = Math.floor(restante / 3600000);
-            const minutos = Math.floor((restante % 3600000) / 60000);
-
-            return reply(
-                `💼 Você já trabalhou hoje!\n\n⏳ Aguarde ${horas}h ${minutos}min para trabalhar novamente.`
-            );
-        }
-    }
-
-    golds[sender].gold += recompensa;
-    trabalho[sender] = agora;
-
-    fs.writeFileSync(goldsPath, JSON.stringify(golds, null, 2));
-    fs.writeFileSync(trabalhoPath, JSON.stringify(trabalho, null, 2));
-
-    await sock.sendMessage(from, {
-        image: {
-            url: 'https://qu.ax/ppgMs'
-        },
-        caption:
-`💼 *TRABALHO CONCLUÍDO!*
-
-💰 Recompensa: ${recompensa} Golds
-
-🏦 Saldo atual: ${golds[sender].gold} Golds
-
-⏳ Próximo trabalho disponível em 8 horas.`
-    }, {
-        quoted: info
-    });
-
-}
-break;
                 case 'fazendeiro': {
     const fs = require('fs');
 
@@ -1820,14 +1758,10 @@ break;
         ? JSON.parse(fs.readFileSync(fazendeiroPath))
         : {};
 
-    const cooldown = 8 * 60 * 60 * 1000; // 8 horas
+    const cooldown = 8 * 60 * 60 * 1000;
     const recompensa = 35;
 
-    if (!golds[sender]) {
-        golds[sender] = {
-            gold: 0
-        };
-    }
+    if (!golds[sender]) golds[sender] = { gold: 0 };
 
     const agora = Date.now();
 
@@ -1838,9 +1772,7 @@ break;
             const horas = Math.floor(restante / 3600000);
             const minutos = Math.floor((restante % 3600000) / 60000);
 
-            return reply(
-                `🚜 Você já trabalhou na fazenda hoje!\n\n⏳ Aguarde ${horas}h ${minutos}min para colher novamente.`
-            );
+            return reply(`🚜 Você já trabalhou na fazenda hoje!\n\n⏳ Aguarde ${horas}h ${minutos}min para colher novamente.`);
         }
     }
 
@@ -1850,12 +1782,12 @@ break;
     fs.writeFileSync(goldsPath, JSON.stringify(golds, null, 2));
     fs.writeFileSync(fazendeiroPath, JSON.stringify(fazendeiro, null, 2));
 
+    if (!fs.existsSync('./media/temp/fazendeiro.jpg'))
+        return reply('❌ Imagem fazendeiro.jpg não encontrada.');
+
     await sock.sendMessage(from, {
-        image: {
-            url: 'https://qu.ax/C9g8d'
-        },
-        caption:
-`🚜 *DIA DE COLHEITA!*
+        image: fs.readFileSync('./media/temp/fazendeiro.jpg'),
+        caption: `🚜 *DIA DE COLHEITA!*
 
 🌾 Você trabalhou na fazenda e recebeu:
 
@@ -1867,10 +1799,10 @@ break;
     }, {
         quoted: info
     });
-
 }
 break;
-                case 'capinar': {
+
+case 'capinar': {
     const fs = require('fs');
 
     const goldsPath = './assets/golds.json';
@@ -1884,14 +1816,10 @@ break;
         ? JSON.parse(fs.readFileSync(capinarPath))
         : {};
 
-    const cooldown = 8 * 60 * 60 * 1000; // 8 horas
+    const cooldown = 8 * 60 * 60 * 1000;
     const recompensa = 50;
 
-    if (!golds[sender]) {
-        golds[sender] = {
-            gold: 0
-        };
-    }
+    if (!golds[sender]) golds[sender] = { gold: 0 };
 
     const agora = Date.now();
 
@@ -1902,9 +1830,7 @@ break;
             const horas = Math.floor(restante / 3600000);
             const minutos = Math.floor((restante % 3600000) / 60000);
 
-            return reply(
-                `🌱 Você já capinou hoje!\n\n⏳ Aguarde ${horas}h ${minutos}min para capinar novamente.`
-            );
+            return reply(`🌱 Você já capinou hoje!\n\n⏳ Aguarde ${horas}h ${minutos}min para capinar novamente.`);
         }
     }
 
@@ -1914,12 +1840,12 @@ break;
     fs.writeFileSync(goldsPath, JSON.stringify(golds, null, 2));
     fs.writeFileSync(capinarPath, JSON.stringify(capinar, null, 2));
 
+    if (!fs.existsSync('./media/temp/capinar.jpg'))
+        return reply('❌ Imagem capinar.jpg não encontrada.');
+
     await sock.sendMessage(from, {
-        image: {
-            url: 'https://qu.ax/ZlWqQ'
-        },
-        caption:
-`🌱 *CAPINA CONCLUÍDA!*
+        image: fs.readFileSync('./media/temp/capinar.jpg'),
+        caption: `🌱 *CAPINA CONCLUÍDA!*
 
 🪓 Você limpou o terreno com sucesso!
 
@@ -1931,10 +1857,10 @@ break;
     }, {
         quoted: info
     });
-
 }
 break;
-                case 'pescar': {
+
+case 'pescar': {
     const fs = require('fs');
 
     const goldsPath = './assets/golds.json';
@@ -1948,14 +1874,10 @@ break;
         ? JSON.parse(fs.readFileSync(pescarPath))
         : {};
 
-    const cooldown = 8 * 60 * 60 * 1000; // 8 horas
+    const cooldown = 8 * 60 * 60 * 1000;
     const recompensa = 15;
 
-    if (!golds[sender]) {
-        golds[sender] = {
-            gold: 0
-        };
-    }
+    if (!golds[sender]) golds[sender] = { gold: 0 };
 
     const agora = Date.now();
 
@@ -1966,9 +1888,7 @@ break;
             const horas = Math.floor(restante / 3600000);
             const minutos = Math.floor((restante % 3600000) / 60000);
 
-            return reply(
-                `🎣 Você já pescou recentemente!\n\n⏳ Aguarde ${horas}h ${minutos}min para pescar novamente.`
-            );
+            return reply(`🎣 Você já pescou recentemente!\n\n⏳ Aguarde ${horas}h ${minutos}min para pescar novamente.`);
         }
     }
 
@@ -1978,12 +1898,12 @@ break;
     fs.writeFileSync(goldsPath, JSON.stringify(golds, null, 2));
     fs.writeFileSync(pescarPath, JSON.stringify(pescar, null, 2));
 
+    if (!fs.existsSync('./media/temp/pescar.jpg'))
+        return reply('❌ Imagem pescar.jpg não encontrada.');
+
     await sock.sendMessage(from, {
-        image: {
-            url: 'https://qu.ax/xgcOZ'
-        },
-        caption:
-`🎣 *PESCARIA CONCLUÍDA!*
+        image: fs.readFileSync('./media/temp/pescar.jpg'),
+        caption: `🎣 *PESCARIA CONCLUÍDA!*
 
 🐟 Você voltou do rio com uma ótima pescaria!
 
@@ -1995,7 +1915,6 @@ break;
     }, {
         quoted: info
     });
-
 }
 break;
 case 'tiktok': {
@@ -2403,6 +2322,36 @@ break;
     });
 
     return reply(txt);
+}
+break;
+                case 'meuspets': {
+    const fs = require('fs');
+
+    const userPetsPath = './assets/userpets.json';
+
+    let userPets = fs.existsSync(userPetsPath)
+        ? JSON.parse(fs.readFileSync(userPetsPath))
+        : {};
+
+    if (!userPets[sender] || !userPets[sender].pets || userPets[sender].pets.length === 0) {
+        return reply('🐾 Você não possui nenhum pet.');
+    }
+
+    let texto = '🐾 *SEUS PETS*\n\n';
+
+    userPets[sender].pets.forEach((pet, i) => {
+        texto += `*${i + 1}.* ${pet.nome}\n`;
+        
+        if (pet.raridade)
+            texto += `⭐ Raridade: ${pet.raridade}\n`;
+
+        if (pet.valor)
+            texto += `💰 Valor: ${pet.valor} golds\n`;
+
+        texto += '\n';
+    });
+
+    reply(texto);
 }
 break;
                 case 'comprarpet': {
