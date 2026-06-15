@@ -242,7 +242,7 @@ function grupoAlugado(id) {
 }
 function copiarArquivos(origem, destino) {
 
-```
+    
 const ignorar = [
     "node_modules",
     "configs.json",
@@ -293,13 +293,13 @@ for (const arquivo of arquivos) {
 
     }
 }
-```
+
 
 }
 
 function criarBackup() {
 
-```
+
 const backupDir = "./backup";
 
 if (!fs.existsSync(backupDir)) {
@@ -311,8 +311,7 @@ if (!fs.existsSync(backupDir)) {
     );
 }
 
-const pastaBackup =
-    `${backupDir}/${Date.now()}`;
+const pastaBackup = backupDir + "/" + Date.now();
 
 fs.mkdirSync(
     pastaBackup,
@@ -327,7 +326,7 @@ copiarArquivos(
 );
 
 return pastaBackup;
-```
+
 
 }
 
@@ -335,18 +334,18 @@ function restaurarBackup(
 pastaBackup
 ) {
 
-```
+
 copiarArquivos(
     pastaBackup,
     "./"
 );
-```
+
 
 }
 
 async function atualizarBot() {
 
-```
+
 const configs = JSON.parse(
     fs.readFileSync(
         "./dono/configs.json",
@@ -475,7 +474,7 @@ try {
         status: true,
         versao: versaoGithub,
         mensagem:
-```
+
 
 `🚀 Atualização concluída!
 
@@ -488,7 +487,7 @@ ${versaoGithub}
 ${arquivosAtualizar.length}`
 };
 
-```
+
 } catch (err) {
 
     console.log(
@@ -506,7 +505,7 @@ ${arquivosAtualizar.length}`
     );
 
 }
-```
+
 
 }
 
