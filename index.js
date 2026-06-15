@@ -2,7 +2,6 @@
 // ESSE bot está sendo continuado pelo Matheus & Daniel! Ainda está em fases de testes para a fase da V2 e depois ser disponibilizada, não VAZE por enquanto!
 // ================================= \\
 const validarKey = require('./keycheck');
-
 (async () => {
     await validarKey(); // se travar aqui, nem roda o bot
    
@@ -18,28 +17,47 @@ function salvarKeys(data) {
 }
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion, jidDecode, downloadContentFromMessage, generateWAMessageFromContent, proto, prepareWAMessageMedia, downloadMediaMessage } = require('baileys-pro');
 const baileysVer = require("baileys-pro/package.json").version;
+const nickTemp = {};
 const fetchJson = require('./assets/functions/fetchJson.js');
 const VERSION_URL =
 "https://raw.githubusercontent.com/matheus09dasilvahenrique-wq/Toshiruz-Bot/main/version.json";
 const ZIP_URL =
 "https://github.com/matheus09dasilvahenrique-wq/Toshiruz-Bot/archive/refs/heads/main.zip";
+const fs = require('fs');
+const FormData = require('form-data');
 const AdmZip = require("adm-zip");
 const { chavepix, versao } = require('./dono/configs.json');
 const { exec } = require('child_process');
 const { gerarAttp } = require('./assets/functions/attp.js');
 const advPath = './assets/advertencias.json';
-const menuButtons = require('./dono/menus/menuButtons.js')
-const { TOKEN } = require('./dono/configs.json');
+const { apitoken: TOKEN } = require('./dono/configs.json'); 
 const TOKEN_API = 'TOKEN-API-MATH'
 const API_TOSHI = 'https://bubbly-dedication-production-5925.up.railway.app'
 global.batalhas = global.batalhas || {};
-const fs = require('fs');
 const path = require('path');
+const os = require('os');
+const yts = require('yt-search');
+const play = require('play-dl');
 const petsPath = path.join(__dirname, './assets/pet.json');
 const userPetsPath = path.join(__dirname, './assets/userpets.json');
 const goldsPath = path.join(__dirname, './assets/golds.json');
 const cacaPalavras = {};
 const jogoPalavras = {};
+function carregarPets() {
+    return JSON.parse(fs.readFileSync(userPetsPath));
+}
+
+function salvarPets(data) {
+    fs.writeFileSync(userPetsPath, JSON.stringify(data, null, 2));
+}
+
+function carregarGold() {
+    return JSON.parse(fs.readFileSync(goldsPath));
+}
+
+function salvarGold(data) {
+    fs.writeFileSync(goldsPath, JSON.stringify(data, null, 2));
+}
 function getDB() {
     return fs.existsSync('./assets/userpets.json')
         ? JSON.parse(fs.readFileSync('./assets/userpets.json'))
@@ -54,6 +72,15 @@ function getPetsDB() {
     return fs.existsSync('./assets/userpets.json')
         ? JSON.parse(fs.readFileSync('./assets/userpets.json'))
         : {};
+}
+async function getBuffer(url) {
+    const response = await axios({
+        method: 'get',
+        url,
+        responseType: 'arraybuffer'
+    });
+
+    return Buffer.from(response.data);
 }
 let sock;
 function carregarGold() {
@@ -133,58 +160,52 @@ const palavrasCaca = [
 "garrafa","golfinho","hortela","jabuti","jacare","kiwi","lagarto","lampada","limao","lontra",
 "mamute","maracuja","mexerica","nariz","ouriço","pato","pera","pessego","pinguim","raposa"
 ];
-setInterval(async () => {
 
-    try {
+async function limparBancoPorGrupos(sock, arquivos) {
 
-        let db = carregarGold();
+    const grupos = await sock.groupFetchAllParticipating();
+
+    const membros = new Set();
+
+    for (const idGrupo in grupos) {
+        grupos[idGrupo].participants.forEach(p => {
+            membros.add(p.id);
+        });
+    }
+
+    let removidos = 0;
+
+    for (const arquivo of arquivos) {
+
+        const banco = JSON.parse(fs.readFileSync(arquivo));
+
         let alterado = false;
 
-        const grupos =
-        Object.keys(
-            await sock.groupFetchAllParticipating()
-        );
+        for (const usuario in banco) {
 
-        for (const usuario in db) {
+            if (
+                usuario.endsWith('@newsletter') ||
+                usuario.endsWith('@g.us') ||
+                usuario.endsWith('@lid')
+            ) continue;
 
-            let encontrado = false;
-
-            for (const grupo of grupos) {
-
-                try {
-
-                    const membros =
-                    (await sock.groupMetadata(grupo))
-                    .participants
-                    .map(x => x.id);
-
-                    if (membros.includes(usuario)) {
-                        encontrado = true;
-                        break;
-                    }
-
-                } catch {}
-
-            }
-
-            if (!encontrado) {
-
-                delete db[usuario];
+            if (!membros.has(usuario)) {
+                delete banco[usuario];
+                removidos++;
                 alterado = true;
-
             }
-
         }
 
         if (alterado) {
-            salvarGold(db);
+            fs.writeFileSync(
+                arquivo,
+                JSON.stringify(banco, null, 2)
+            );
         }
-
-    } catch (err) {
-        console.log(err);
     }
 
-}, 86400000);
+    return removidos;
+}
 const caminhoAluguel = './assets/aluguel.json';
 
 function carregarAluguel() {
@@ -221,146 +242,220 @@ function grupoAlugado(id) {
 }
 function copiarArquivos(origem, destino) {
 
-    const ignorar = [
-        "node_modules",
-        "configs.json",
-        "aluguel.json"
-    ];
+```
+const ignorar = [
+    "node_modules",
+    "configs.json",
+    "aluguel.json",
+    "backup"
+];
 
-    const arquivos =
-        fs.readdirSync(origem);
+const arquivos = fs.readdirSync(origem);
 
-    for (const arquivo of arquivos) {
+for (const arquivo of arquivos) {
 
-        if (ignorar.includes(arquivo))
-            continue;
+    if (ignorar.includes(arquivo))
+        continue;
 
-        const origemAtual =
-            path.join(origem, arquivo);
+    const origemAtual =
+        path.join(origem, arquivo);
 
-        const destinoAtual =
-            path.join(destino, arquivo);
+    const destinoAtual =
+        path.join(destino, arquivo);
+
+    if (
+        fs.statSync(origemAtual)
+        .isDirectory()
+    ) {
 
         if (
-            fs.statSync(origemAtual)
-            .isDirectory()
+            !fs.existsSync(destinoAtual)
         ) {
-
-            if (
-                !fs.existsSync(destinoAtual)
-            ) {
-                fs.mkdirSync(
-                    destinoAtual,
-                    {
-                        recursive: true
-                    }
-                );
-            }
-
-            copiarArquivos(
-                origemAtual,
-                destinoAtual
+            fs.mkdirSync(
+                destinoAtual,
+                {
+                    recursive: true
+                }
             );
-
-        } else {
-
-            fs.copyFileSync(
-                origemAtual,
-                destinoAtual
-            );
-
         }
+
+        copiarArquivos(
+            origemAtual,
+            destinoAtual
+        );
+
+    } else {
+
+        fs.copyFileSync(
+            origemAtual,
+            destinoAtual
+        );
+
     }
 }
-async function atualizarBot() {
+```
 
-    const configs = JSON.parse(
-        fs.readFileSync("./dono/configs.json", "utf8")
-    );
+}
 
-    const versaoLocal = configs.version;
+function criarBackup() {
 
-    const dadosGithub = (
-        await axios.get(VERSION_URL)
-    ).data;
+```
+const backupDir = "./backup";
 
-    const versaoGithub = dadosGithub.version;
-    const novidades = dadosGithub.mensagem || "Sem informações.";
-
-    console.log("Versão Local:", versaoLocal);
-    console.log("Versão GitHub:", versaoGithub);
-
-    if (!versaoGithub) {
-        throw new Error("Version não encontrada no GitHub.");
-    }
-
-    if (versaoGithub === versaoLocal) {
-        return {
-            status: false,
-            mensagem: "✅ Você já está na última versão."
-        };
-    }
-
-    const resposta = await axios.get(
-        ZIP_URL,
+if (!fs.existsSync(backupDir)) {
+    fs.mkdirSync(
+        backupDir,
         {
-            responseType: "arraybuffer"
+            recursive: true
         }
     );
+}
 
-    fs.writeFileSync(
-        "./update.zip",
-        resposta.data
+const pastaBackup =
+    `${backupDir}/${Date.now()}`;
+
+fs.mkdirSync(
+    pastaBackup,
+    {
+        recursive: true
+    }
+);
+
+copiarArquivos(
+    "./",
+    pastaBackup
+);
+
+return pastaBackup;
+```
+
+}
+
+function restaurarBackup(
+pastaBackup
+) {
+
+```
+copiarArquivos(
+    pastaBackup,
+    "./"
+);
+```
+
+}
+
+async function atualizarBot() {
+
+```
+const configs = JSON.parse(
+    fs.readFileSync(
+        "./dono/configs.json",
+        "utf8"
+    )
+);
+
+const versaoLocal =
+    configs.version;
+
+const dadosGithub =
+    (
+        await axios.get(
+            VERSION_URL
+        )
+    ).data;
+
+const versaoGithub =
+    dadosGithub.version;
+
+const novidades =
+    dadosGithub.mensagem ||
+    "Sem informações.";
+
+const arquivosAtualizar =
+    dadosGithub.files || [];
+
+console.log(
+    "Versão Local:",
+    versaoLocal
+);
+
+console.log(
+    "Versão GitHub:",
+    versaoGithub
+);
+
+if (!versaoGithub) {
+    throw new Error(
+        "Version não encontrada."
     );
+}
 
-    const zip = new AdmZip("./update.zip");
+if (
+    versaoGithub ===
+    versaoLocal
+) {
+    return {
+        status: false,
+        mensagem:
+            "✅ Você já está na última versão."
+    };
+}
 
-    zip.extractAllTo(
-        "./temp_update",
-        true
-    );
+const backup =
+    criarBackup();
 
-    const pastaExtraida =
-        fs.readdirSync("./temp_update")[0];
+try {
 
-    const origem =
-        `./temp_update/${pastaExtraida}`;
+    for (
+        const arquivo
+        of arquivosAtualizar
+    ) {
 
-    const protegidos = [
-        "dono",
-        "media",
-        "node_modules",
-        "assets",
-        "keycheck.js",
-        "Download",
-        "package.json",
-        "package-lock.json",
-        "start.sh",
-        "update.zip",
-        "temp_update"
-    ];
+        const url =
+            `https://raw.githubusercontent.com/matheus09dasilvahenrique-wq/Toshiruz-Bot/main/${arquivo}`;
 
-    const arquivosRaiz =
-        fs.readdirSync("./");
+        console.log(
+            "Atualizando:",
+            arquivo
+        );
 
-    for (const item of arquivosRaiz) {
+        const resposta =
+            await axios.get(
+                url,
+                {
+                    responseType:
+                        "text"
+                }
+            );
 
-        if (protegidos.includes(item))
-            continue;
+        const pasta =
+            path.dirname(
+                arquivo
+            );
 
-        fs.rmSync(item, {
-            recursive: true,
-            force: true
-        });
+        if (
+            pasta !== "." &&
+            !fs.existsSync(
+                pasta
+            )
+        ) {
+            fs.mkdirSync(
+                pasta,
+                {
+                    recursive: true
+                }
+            );
+        }
+
+        fs.writeFileSync(
+            arquivo,
+            resposta.data
+        );
 
     }
 
-    copiarArquivos(
-        origem,
-        "./"
-    );
-
-    configs.version = versaoGithub;
+    configs.version =
+        versaoGithub;
 
     fs.writeFileSync(
         "./dono/configs.json",
@@ -376,30 +471,45 @@ async function atualizarBot() {
         versaoGithub
     );
 
-    fs.rmSync(
-        "./temp_update",
-        {
-            recursive: true,
-            force: true
-        }
-    );
-
-    fs.unlinkSync(
-        "./update.zip"
-    );
-
     return {
         status: true,
         versao: versaoGithub,
         mensagem:
-`🚀 Atualização encontrada!
+```
 
-📦 Versão: ${versaoGithub}
+`🚀 Atualização concluída!
 
-${novidades}`
-    };
+📦 Nova versão:
+${versaoGithub}
+
+📝 ${novidades}
+
+📁 Arquivos atualizados:
+${arquivosAtualizar.length}`
+};
+
+```
+} catch (err) {
+
+    console.log(
+        "Erro na atualização."
+    );
+
+    console.log(err);
+
+    restaurarBackup(
+        backup
+    );
+
+    throw new Error(
+        "Falha na atualização. Backup restaurado."
+    );
 
 }
+```
+
+}
+
 // Pega data de hoje como "2025-11-26"
 function dataHoje() {
     return new Date().toISOString().slice(0, 10);
@@ -420,7 +530,6 @@ const minutos = now.format("mm");
 const segundos = now.format("ss");
 const dataFormatada = `${dia}/${mes}/${ano}`;
 const horaFormatada = `${horas}:${minutos}:${segundos}`;
-const { yts } = require("yt-search");
 const pino = require('pino');
 const colors = require('colors');
 const readline = require('readline');
@@ -513,9 +622,9 @@ return menuLOGOS(prefix, NomeDoBot);
 const menubuttons = require('./dono/menus/menubuttons.js');
 return menubuttons(prefix, sender, baileysVer, saudacao, NomeDoBot, horaFormatada, dataFormatada)
 }
-function menuadm(prefix, NomeDoBot) {
+function menuadm(prefix) {
 const menuadmin = require("./dono/menus/menuadm.js");
-return menuadmin(prefix, NomeDoBot);
+return menuadmin(prefix);
 }
 function typewriter(texto, cor = "\x1b[0m", velocidade = 50) {
     let i = 0;
@@ -622,6 +731,60 @@ setTimeout(() => {
     }
 });
 sock.ev.on('group-participants.update', async (update) => {
+    const fs = require('fs');
+
+const path = './assets/bemvindo.json';
+
+if (!fs.existsSync(path)) return;
+
+const db = JSON.parse(fs.readFileSync(path));
+
+if (!db[update.id]) return;
+if (!db[update.id].ativo) return;
+
+if (update.action !== 'add') return;
+
+const metadata =
+await sock.groupMetadata(update.id);
+
+for (const membro of update.participants) {
+
+let texto = db[update.id].legenda;
+
+texto = texto.replace(
+/{membro}/g,
+`@${membro.split('@')[0]}`
+);
+
+texto = texto.replace(
+/{grupo}/g,
+metadata.subject
+);
+
+texto = texto.replace(
+/{total}/g,
+String(metadata.participants.length)
+);
+
+texto = texto.replace(
+/{hora}/g,
+new Date().toLocaleTimeString('pt-BR')
+);
+
+texto = texto.replace(
+/{data}/g,
+new Date().toLocaleDateString('pt-BR')
+);
+
+await sock.sendMessage(
+update.id,
+{
+text: texto,
+mentions: [membro]
+}
+);
+
+}
     const groupId = update.id;
     let groupMetadata = await sock.groupMetadata(groupId);
     const nomegp = groupMetadata.subject;
@@ -644,7 +807,6 @@ function getJid(u) {
   return String(u);
 }
 
-const fs = require('fs');
 const pathLegenda = './assets/legendas.json';
 
 let legendas = {};
@@ -1027,52 +1189,132 @@ const quoted =
     null;
     
         switch (command) {
-          case 'menu':
-          if (!isGroup) return reply(enviar.msg.group);
-          try {
-          reagir('⚡');
-          await new Promise(resolve => setTimeout(resolve, 2000));
-const botPhotoUrl = "https://files.catbox.moe/jpvorg.jpg";
-const botName = NomeDoBot;
-const messageText = "𝙀𝙣𝙫𝙞𝙖𝙣𝙙𝙤 𝙨𝙚𝙪 𝙢𝙚𝙣𝙪, 𝙖𝙜𝙪𝙖𝙧𝙙𝙚...";
-await sock.sendMessage(from, {
-text: messageText,
-contextInfo: {
-externalAdReply: {
-title: botName,
-body: 'Made by: Biel',
-mediaType: 4,
-thumbnail: fs.readFileSync('./media/menu/menu.jpg'),
-mediaUrl: 'https://files.catbox.moe/jpvorg.jpg',
-sourceUrl: ''
-                  }
-             }
-      }, { quoted: selometa });
-          const textMen = menu(pushname, NickDono, dataFormatada, prefix, NomeDoBot);
-            await sock.sendMessage(
-    from,
-    {
-        image: { url: fotomenu },
-        caption: textMen,
-        mentions: [sender],
-        contextInfo: {
-            forwardingScore: 100000,
-            isForwarded: true,
-            forwardedNewsletterMessageInfo: {
-                newsletterJid: "120363405476475431@newsletter",
-                newsletterName: NomeDoBot
-            }
-        }
-    },
-    { quoted: selometa }
+                
+          case 'menu': {
+
+if (!isGroup)
+return reply(enviar.msg.group);
+
+try {
+
+reagir('⚡');
+
+const textMen = menu(
+pushname,
+NickDono,
+dataFormatada,
+prefix,
+NomeDoBot
 );
 
-            } catch (e) {
-            reagir('❌');
-            console.log('Erro ao enviar o menu:', e)
-            reply('❌ Erro ao enviar o menu');
-            }
-            break;
+await sock.sendMessage(
+from,
+{
+image: {
+url: fotomenu
+},
+caption: textMen,
+mentions: [sender],
+contextInfo: {
+forwardingScore: 999,
+isForwarded: true,
+forwardedNewsletterMessageInfo: {
+newsletterJid: '120363405476475431@newsletter',
+newsletterName: NomeDoBot
+}
+}
+},
+{
+quoted: selometa
+}
+);
+
+reagir('✅');
+
+} catch (e) {
+
+console.log('Erro ao enviar menu:', e);
+
+reagir('❌');
+
+reply('❌ Erro ao enviar o menu.');
+
+}
+
+}
+break;
+                case 'nick': {
+
+if (!q)
+return reply(`✍️ Exemplo:\n${prefix}nick Matheus`);
+
+try {
+
+const res = await fetchJson(
+`https://yuta-apis.xyz/api/geradores/gerar-nicks?apitoken=${TOKEN}&text=${encodeURIComponent(q)}`
+);
+
+console.log(JSON.stringify(res, null, 2));
+
+const lista = res.resultado || res.resultados || [];
+
+if (!lista.length)
+return reply('❌ Nenhum nick encontrado.');
+
+nickTemp[sender] = lista;
+
+let txt = `🎭 *NICKS GERADOS*\n\n`;
+
+for (let i = 0; i < lista.length; i++) {
+
+txt += `${i + 1}️⃣ ${lista[i].result}\n`;
+
+}
+
+txt += `\n━━━━━━━━━━━━━━\n`;
+txt += `📝 Escolha um usando:\n`;
+txt += `${prefix}usarnick número\n\n`;
+txt += `Exemplo:\n${prefix}usarnick 3`;
+
+reply(txt);
+
+} catch (e) {
+
+console.log('Erro nick:', e);
+
+reply('❌ Erro ao gerar os nicks.');
+
+}
+
+}
+break;
+                case 'usarnick': {
+
+if (!q) return reply(`Exemplo:\n${prefix}usarnick 1`);
+
+if (!nickTemp[sender])
+return reply('❌ Gere nicks primeiro usando !nick.');
+
+const numero = parseInt(q);
+
+if (
+isNaN(numero) ||
+numero < 1 ||
+numero > nickTemp[sender].length
+)
+return reply('❌ Número inválido.');
+
+const escolhido =
+nickTemp[sender][numero - 1];
+
+reply(
+`✅ Nick escolhido:\n\n${escolhido.result}\n\n🎨 Fonte: ${escolhido.name}`
+);
+
+delete nickTemp[sender];
+
+}
+break;
             case 'menuadm':
             case 'adm':
             if (!isGroup) return reply(enviar.msg.group);
@@ -1080,7 +1322,7 @@ sourceUrl: ''
           try {
           reagir('🙅‍♀️');
           await new Promise(resolve => setTimeout(resolve, 2000));
-          const menuAdm = menuadm(prefix, NomeDoBot);
+          const menuAdm = menuadm(prefix);
             await sock.sendMessage(
     from,
     {
@@ -1166,69 +1408,6 @@ sourceUrl: ''
             reply('❌ Erro ao enviar o menu');
             }
             break;
-            case 'menu':
-  const menuButton = menuButtons(sender, saudacao, NomeDoBot, horaFormatada, dataFormatada);
-    await sock.sendMessage(from, { react: { text: '⚡', key: info.key } });
-    await sock.sendMessage(from, {
-      image: { url: fotomenu },
-      caption: menuButton,
-      footer: NomeDoBot,
-      contextInfo: {
-        participant: null,
-        mentionedJid: [sender],
-      },
-      buttons: [
-        {
-          buttonId: 'action',
-          buttonText: { displayText: '𖥨ํ∘̥⃟⸽⃟🎅🏻৴▸ 𝙼𝙴𝙽𝚄𝚂' },
-          type: 4, // Native flow button
-          nativeFlowInfo: {
-            name: 'single_select',
-            paramsJson: JSON.stringify({
-              title: '𖥨ํ∘̥⃟⸽⃟🎅🏻৴▸ 𝙼𝙴𝙽𝚄𝚂',
-              sections: [
-                {
-                  title: '𖥨ํ∘̥⃟⸽⃟🌲৴▸ 𝙲𝚁𝙸𝙰𝙳𝙾𝚁',
-                  highlight_label: '🦌',
-                  rows: [{ title: '𖥨ํ∘̥⃟⸽⃟☃️৴▸ 𝙳𝙾𝙽𝙾𝚂 𝙳𝙾 𝙱𝙾𝚃', description: '𖥨ํ∘̥⃟⸽⃟🦌৴▸ 𝙲𝙾𝙽𝚃𝙰𝚃𝙾𝚂 𝙳𝙾𝚂 𝙼𝙴𝚄𝚂 𝙳𝙾𝙽𝙾𝚂', id: `${prefix}donos` }],
-                },
-                {
-                  title: '𖥨ํ∘̥⃟⸽⃟🔔৴▸ 𝙼𝙴𝙽𝚄 𝙳𝙾𝙽𝙾',
-                  highlight_label: '🔔',
-                  rows: [{ title: '𖥨ํ∘̥⃟⸽⃟🌲৴▸ 𝙼𝙴𝙽𝚄 𝙳𝙾𝙽𝙾', description: '𖥨ํ∘̥⃟⸽⃟❄️৴▸ 𝙴𝚇𝙲𝙻𝚄𝚂𝙸𝚅𝙾 𝙰𝙿𝙴𝙽𝙰𝚂 𝙿𝙰𝚁𝙰 𝙼𝙴𝚄𝚂 𝙳𝙾𝙽𝙾𝚂', id: `${prefix}menudono` }],
-                },
-                {
-                  title: '𖥨ํ∘̥⃟⸽⃟🎁৴▸ 𝙼𝙴𝙽𝚄𝚂',
-                  highlight_label: '🌲',
-                  rows: [
-                    { title: '❪❄️ฺ࣭࣪͘ꕸ▸ 𝙼𝙴𝙽𝚄', description: '❄️ꪾ〬ꩌ۪٬ླྀ 𝙼𝙴𝙽𝚄 𝙿𝚁𝙸𝙽𝙲𝙸𝙿𝙰𝙻 𝙳𝙾  𝙱𝙾𝚃', id: `${prefix}menup` },
-                    { title: '❪🦌ฺ࣭࣪͘ꕸ▸ 𝙼𝙴𝙽𝚄 𝙰𝙳𝙼', description: '❄️ꪾ〬ꩌ۪٬ླྀ 𝙼𝙴𝙽𝚄 𝙿𝙰𝚁𝙰 𝙰𝙳𝙼𝙸𝙽𝚂', id: `${prefix}menuadm` },
-                    { title: '❪🍦ฺ࣭࣪͘ꕸ▸ 𝙼𝙴𝙽𝚄 𝙳𝙾𝙽𝙾', description: '❪🍧ฺ࣭࣪͘ꕸ▸ྀ 𝙼𝙴𝙽𝚄 𝙰𝙿𝙴𝙽𝙰𝚂 𝙿𝙰𝚁𝙰 𝙾𝚂 𝙳𝙾𝙽𝙾𝚂', id: `${prefix}menudono` },
-                    { title: '❪💸ฺ࣭࣪͘ꕸ▸ 𝙼𝙴𝙽𝚄 𝚅𝙸𝙿', description: '❪🎅🏻ฺ࣭࣪͘ꕸ▸ 𝙼𝙴𝙽𝚄 𝙿𝙰𝚁𝙰 𝚅𝙸𝙿𝚂', id: `${prefix}menuvip` },
-                    { title: '❪🎮ฺ࣭࣪͘ꕸ▸ 𝙼𝙴𝙽𝚄 𝙶𝙰𝙼𝙴𝚂', description: '❪🌲ฺ࣭࣪͘ꕸ▸ 𝙼𝙴𝙽𝚄 𝙳𝙴 𝙹𝙾𝙶𝙾𝚂', id: `${prefix}menugames` },
-                                        { title: '❪🎁ฺ࣭࣪͘ꕸ▸ 𝙼𝙴𝙽𝚄 𝙳𝙾𝚆𝙽𝙻𝙾𝙰𝙳𝚂', description: '❪🦌ฺ࣭࣪͘ꕸ▸ 𝙼𝙴𝙽𝚄 𝙳𝙴 𝙳𝙾𝚆𝙽𝙻𝙾𝙰𝙳𝚂', id: `${prefix}menudownloads` },
-                    { title: '❪☃️ฺ࣭࣪͘ꕸ▸ 𝙼𝙴𝙽𝚄 𝙻𝙾𝙶𝙾𝚂', description: '❪❄️ฺ࣭࣪͘ꕸ▸ྀ 𝙵𝙰𝙲̧𝙰 𝚂𝚄𝙰 𝙵𝙾𝚃𝙾 𝙽𝙴𝚂𝚃𝙴 𝙼𝙴𝙽𝚄', id: `${prefix}menulogos` },
-                    { title: '❪🪄ฺ࣭࣪͘ꕸ▸ 𝙼𝙴𝙽𝚄 𝙴𝙵𝙴𝙸𝚃𝙾𝚂', description: '❪⚡ฺ࣭࣪͘ꕸ▸ 𝙼𝙴𝙽𝚄 𝙳𝙴 𝙴𝙵𝙴𝙸𝚃𝙾𝚂', id: `${prefix}menuefeitos` },
-                    { title: '❪🎅🏻ฺ࣭࣪͘ꕸ▸ 𝙼𝙴𝙽𝚄 𝙷𝙴𝙽𝚃𝙰𝙸', description: '❪🔔ฺ࣭࣪͘ꕸ▸ 𝙿𝙻𝙰𝚀𝚄𝙸𝙽𝙷𝙰𝚂 +𝟷𝟾', id: `${prefix}menuhentai` },
-                  ],
-                }
-              ],
-            }),
-          },
-        },
-      ],
-      headerType: 4,
-      viewOnce: true,
-    }, { quoted: selometa });
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    reagir('✅');
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    reagir('❤️');
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    reagir('🔪');
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    reagir('');
-  break
                 case 'fazerpix': {
 reply(
 `💰 *PAGAMENTO DO ALUGUEL*
@@ -1408,20 +1587,44 @@ porcentagem >= 20 ? "🙂 Tem traços sigma, mas precisa treinar." :
 }
 break;
 case 'bemvindo': {
-    if (!isGroup) return reply(enviar.msg.group);
-    if (!isAdmin) return reply(enviar.msg.adm);
-    if (!isBotAdmin) return reply(enviar.msg.botadm);
-    
-    const groupId = from;
 
-    if (welcome[groupId]) {
-        delete welcome[groupId];
-        reply('❌ Mensagens de boas-vindas e saída foram desativadas neste grupo!');
-    } else {
-        welcome[groupId] = true;
-        reply('✅ Mensagens de boas-vindas e saída foram ativadas neste grupo!');
-    }
-    fs.writeFileSync('./assets/welcome.json', JSON.stringify(welcome, null, 2));
+if (!isGroup) return reply('❌ Apenas em grupos.');
+if (!isAdmin) return reply('❌ Apenas administradores.');
+
+const path = './assets/bemvindo.json';
+
+let db = fs.existsSync(path)
+? JSON.parse(fs.readFileSync(path))
+: {};
+
+if (!db[from]) {
+db[from] = {
+ativo: true,
+legenda: "👋 Olá {membro}\n\nBem-vindo(a) ao grupo {grupo}"
+};
+}
+
+const opcao = q?.toLowerCase();
+
+if (opcao === 'on') {
+db[from].ativo = true;
+} else if (opcao === 'off') {
+db[from].ativo = false;
+} else {
+return reply(
+`⚙️ Sistema de boas-vindas
+
+${prefix}bemvindo on
+${prefix}bemvindo off`
+);
+}
+
+fs.writeFileSync(path, JSON.stringify(db, null, 2));
+
+reply(
+`✅ Bem-vindo ${db[from].ativo ? 'ativado' : 'desativado'}`
+);
+
 }
 break;
             case 'destrava': {
@@ -1466,201 +1669,194 @@ case 'fig':
             }
             break;
 case 'totag': {
-    if (!isGroup) return reply(enviar.msg.group);
-    if (!isAdmin) return reply(enviar.msg.adm);
-    if (!isBotAdmin) return reply(enviar.msg.botadm);
+    if (!isGroup)
+        return reply('❌ Apenas em grupos.');
 
-    const groupData = await sock.groupMetadata(from);
-    const participants = groupData.participants.map(p => p.id);
-    const groupName = groupData.subject;
+    if (!isAdmin)
+        return reply('❌ Apenas administradores.');
 
-    let texto = args.join(" ");
+    if (!isBotAdmin)
+        return reply('❌ Preciso ser administrador.');
 
-    // Caso 1 — sem texto e sem resposta
-    if (!texto && !quoted) {
-        await sock.sendMessage(from, {
-            text: '',
-            mentions: participants,
-            contextInfo: {
-                mentionedJid: participants,
-                externalAdReply: {
-                    title: `Grupo • ${groupName}`,
-                    body: '',
-                    mediaType: 2,
-                }
+    const metadata =
+        await sock.groupMetadata(from);
+
+    const membros =
+        metadata.participants.map(
+            p => p.id
+        );
+
+    // Totag com texto
+    if (!quoted) {
+
+        const texto =
+            args.join(' ') ||
+            '📢 Marcação geral';
+
+        await sock.sendMessage(
+            from,
+            {
+                text: texto,
+                mentions: membros
+            },
+            {
+                quoted: info
             }
-        }, { quoted: selometa });
+        );
+
         break;
     }
 
-    // Caso 2 — com texto (sem resposta)
-    if (texto && !quoted) {
-        await sock.sendMessage(from, {
-            text: texto,
-            mentions: participants,
-            contextInfo: {
-                mentionedJid: participants,
-                externalAdReply: {
-                    title: `Grupo • ${groupName}`,
-                    body: '',
-                    mediaType: 2,
-                }
-            }
-        }, { quoted: selometa });
-        break;
-    }
+    // Totag respondendo mídia/mensagem
+    const msg =
+        quoted.message;
 
-    // Caso 3 — respondendo algo
-    if (quoted) {
-
-        // IMAGEM
-        if (quoted.imageMessage) {
-            const buffer = await sock.downloadMediaMessage({ message: { imageMessage: quoted.imageMessage } });
-
-            await sock.sendMessage(from, {
-                image: buffer,
-                caption: texto || "",
-                mentions: participants,
-                contextInfo: {
-                    mentionedJid: participants,
-                    externalAdReply: {
-                        title: `Grupo • ${groupName}`,
-                        body: '',
-                        mediaType: 2,
-                    }
-                }
-            }, { quoted: selometa });
-            break;
+    await sock.sendMessage(
+        from,
+        {
+            forward: quoted,
+            mentions: membros
         }
+    );
 
-        // VÍDEO
-        if (quoted.videoMessage) {
-            const buffer = await sock.downloadMediaMessage({ message: { videoMessage: quoted.videoMessage } });
-
-            await sock.sendMessage(from, {
-                video: buffer,
-                caption: texto || "",
-                mentions: participants,
-                contextInfo: {
-                    mentionedJid: participants,
-                    externalAdReply: {
-                        title: `Grupo • ${groupName}`,
-                        body: '',
-                        mediaType: 2,
-                    }
-                }
-            }, { quoted: selometa });
-            break;
-        }
-
-        // FIGURINHA
-        if (quoted.stickerMessage) {
-            const buffer = await sock.downloadMediaMessage({ message: { stickerMessage: quoted.stickerMessage } });
-
-            await sock.sendMessage(from, {
-                sticker: buffer,
-                mentions: participants,
-                contextInfo: {
-                    mentionedJid: participants,
-                    externalAdReply: {
-                        title: `Grupo • ${groupName}`,
-                        body: '',
-                        mediaType: 2,
-                    }
-                }
-            }, { quoted: selometa });
-            break;
-        }
-
-        // ÁUDIO
-        if (quoted.audioMessage) {
-            const buffer = await sock.downloadMediaMessage({ message: { audioMessage: quoted.audioMessage } });
-
-            await sock.sendMessage(from, {
-                audio: buffer,
-                mimetype: "audio/mp4",
-                ptt: true,
-                mentions: participants,
-                contextInfo: {
-                    mentionedJid: participants,
-                    externalAdReply: {
-                        title: `Grupo • ${groupName}`,
-                        body: '',
-                        mediaType: 2,
-                    }
-                }
-            }, { quoted: selometa });
-            break;
-        }
-
-        // TEXTO
-        if (quoted.conversation || quoted.extendedTextMessage?.text) {
-            const textoQuote = quoted.conversation || quoted.extendedTextMessage.text;
-
-            await sock.sendMessage(from, {
-                text: `${texto ? texto + "\n\n" : ""}${textoQuote}`,
-                mentions: participants,
-                contextInfo: {
-                    mentionedJid: participants,
-                    externalAdReply: {
-                        title: `Grupo • ${groupName}`,
-                        body: '',
-                        mediaType: 2,
-                    }
-                }
-            }, { quoted: selometa });
-            break;
-        }
-    }
-
-    reply("⚠ Não consegui identificar o tipo de mensagem respondida.");
 }
 break;
                 case 'limpar': {
 
-if (!isDono) return;
+if (!isDono) return reply('Apenas o dono.');
 
-let db = carregarGold();
-let removidos = 0;
+try {
 
-for (const usuario in db) {
+    const removidos = await limparBancoPorGrupos(sock, [
+        goldsPath,
+        userPetsPath
+        // adicione outros json aqui
+    ]);
 
-    let encontrado = false;
+    reply(
+`🧹👀 *𝙻𝚒𝚖𝚙𝚎𝚣𝚊 𝚏𝚎𝚒𝚝𝚊!*
 
-    const grupos = Object.keys(await sock.groupFetchAllParticipating());
+🗑️ *𝚃𝚘𝚝𝚊𝚕 𝚛𝚎𝚖𝚘𝚟𝚒𝚍𝚘:* ${removidos}`
+    );
 
-    for (const grupo of grupos) {
+} catch (err) {
+    console.error(err);
+    reply('Erro ao limpar.');
+}
 
-        try {
+}
+break;
+                case 'sports':
+case 'esportes': {
 
-            const membros =
-            (await sock.groupMetadata(grupo))
-            .participants
-            .map(x => x.id);
+try {
 
-            if (membros.includes(usuario)) {
-                encontrado = true;
-                break;
-            }
+await sock.sendMessage(from, {
+react: {
+text: '⚽',
+key: info.key
+}
+});
 
-        } catch {}
+const res = await fetchJson(
+`https://yuta-apis.xyz/api/noticias/esportes?apitoken=${TOKEN}`
+);
 
-    }
+if (!res?.status)
+return reply('❌*𝙽ã𝚘 𝚏𝚘𝚒 𝚙𝚘𝚜𝚜í𝚟𝚎𝚕 𝚌𝚘𝚗𝚜𝚞𝚕𝚝𝚊𝚛 𝚗𝚘𝚝í𝚌𝚒𝚊𝚜.*');
 
-    if (!encontrado) {
-        delete db[usuario];
-        removidos++;
-    }
+const noticias = res.result || [];
+
+if (!noticias.length)
+return reply('❌ *𝙽𝚎𝚗𝚑𝚞𝚖𝚊 𝚗𝚘𝚝í𝚌𝚒𝚊 𝚏𝚘𝚒 𝚎𝚗𝚌𝚘𝚗𝚝𝚛𝚊𝚍𝚊.*');
+
+let texto = `⚽ *Ú𝚕𝚝𝚒𝚖𝚊𝚜 𝚗𝚘𝚝í𝚌𝚒𝚊𝚜 𝚍𝚘𝚜 𝚎𝚜𝚙𝚘𝚛𝚝𝚎𝚜*\n\n`;
+
+for (let i = 0; i < Math.min(10, noticias.length); i++) {
+
+const n = noticias[i];
+
+texto += `🏆 *${n.titulo || n.title || 'Sem título'}*\n`;
+
+if (n.descricao || n.description)
+texto += `📝 ${n.descricao || n.description}\n`;
+
+if (n.link || n.url)
+texto += `🔗 ${n.link || n.url}\n`;
+
+texto += `\n━━━━━━━━━━━━━━\n\n`;
 
 }
 
-salvarGold(db);
-
-reply(
-`🧹 Limpeza concluída!
-
-👤 Usuários removidos: ${removidos}`
+await sock.sendMessage(
+from,
+{
+text: texto
+},
+{
+quoted: info
+}
 );
+
+await sock.sendMessage(from, {
+react: {
+text: '✅',
+key: info.key
+}
+});
+
+} catch (e) {
+
+console.log('*𝙴𝚛𝚛𝚘 𝚜𝚙𝚘𝚛𝚝𝚜*', e);
+
+reply('❌ *𝙴𝚛𝚛𝚘 𝚊𝚘 𝚋𝚞𝚜𝚌𝚊𝚛 𝚗𝚘𝚝í𝚌𝚒𝚊𝚜 𝚎𝚜𝚙𝚘𝚛𝚝𝚒𝚟𝚊𝚜.*');
+
+}
+
+}
+break;
+                case 'instagram':
+case 'ig': {
+
+try {
+
+if (!q)
+return reply('📸 *𝙴𝚗𝚟𝚒𝚎 𝚞𝚖 𝚕𝚒𝚗𝚔 𝚍𝚘 𝙸𝚗𝚜𝚝𝚊𝚐𝚛𝚊𝚖*.');
+
+await sock.sendMessage(from, {
+react: { text: '⌛', key: info.key }
+});
+
+const res = await fetchJson(
+`https://yuta-apis.xyz/api/downloads/instagram-video?apitoken=${TOKEN}&url=${encodeURIComponent(q)}`
+);
+const dados = res.result[0];
+
+await sock.sendMessage(
+from,
+{
+video: {
+url: dados.video
+},
+caption:
+`📸 *𝚅í𝚍𝚎𝚘 𝚋𝚊𝚒𝚡𝚊𝚍𝚘 𝚟𝚒𝚊 - ${NomeDoBot}*\n\n🔗 ${q}`
+},
+{
+quoted: info
+}
+);
+
+await sock.sendMessage(from, {
+react: { text: '✅', key: info.key }
+});
+
+} catch (e) {
+
+console.log('Erro instagram:', e);
+
+reply('❌ Erro ao baixar vídeo do Instagram.');
+
+}
 
 }
 break;
@@ -1806,112 +2002,1331 @@ case 'capinar': {
     const fs = require('fs');
 
     const goldsPath = './assets/golds.json';
+    const inventarioPath = './assets/inventario.json';
     const capinarPath = './assets/capinar.json';
 
     let golds = fs.existsSync(goldsPath)
         ? JSON.parse(fs.readFileSync(goldsPath))
         : {};
 
+    let inventario = fs.existsSync(inventarioPath)
+        ? JSON.parse(fs.readFileSync(inventarioPath))
+        : {};
+
     let capinar = fs.existsSync(capinarPath)
         ? JSON.parse(fs.readFileSync(capinarPath))
         : {};
 
-    const cooldown = 8 * 60 * 60 * 1000;
-    const recompensa = 50;
+    if (
+        !inventario[sender] ||
+        !inventario[sender].itens ||
+        !inventario[sender].itens.includes('Enxada')
+    ) {
+        return reply(
+            '🌱 Você precisa comprar uma *Enxada*.\n\nUse: !loja'
+        );
+    }
 
-    if (!golds[sender]) golds[sender] = { gold: 0 };
+    if (!golds[sender]) {
+        golds[sender] = {
+            gold: 0
+        };
+    }
 
+    const cooldown = 3 * 60 * 60 * 1000;
     const agora = Date.now();
 
-    if (capinar[sender]) {
-        const restante = cooldown - (agora - capinar[sender]);
+    if (!capinar[sender]) {
+        capinar[sender] = {
+            usos: 0,
+            ultimoReset: agora
+        };
+    }
 
-        if (restante > 0) {
-            const horas = Math.floor(restante / 3600000);
-            const minutos = Math.floor((restante % 3600000) / 60000);
+    if (
+        agora - capinar[sender].ultimoReset >= cooldown
+    ) {
+        capinar[sender].usos = 0;
+        capinar[sender].ultimoReset = agora;
+    }
 
-            return reply(`🌱 Você já capinou hoje!\n\n⏳ Aguarde ${horas}h ${minutos}min para capinar novamente.`);
-        }
+    if (capinar[sender].usos >= 3) {
+
+        const restante =
+            cooldown -
+            (agora - capinar[sender].ultimoReset);
+
+        const horas =
+            Math.floor(restante / 3600000);
+
+        const minutos =
+            Math.floor(
+                (restante % 3600000) / 60000
+            );
+
+        return reply(
+            `🌱 Você já usou suas 3 capinas!\n\n⏳ Aguarde ${horas}h ${minutos}min.`
+        );
+    }
+
+    capinar[sender].usos++;
+
+    const sorte = Math.random();
+
+    let resultado;
+    let recompensa;
+
+    if (sorte <= 0.50) {
+
+        resultado = '🌿 Mato Comum';
+
+        recompensa =
+            Math.floor(Math.random() * 21) + 10;
+
+    } else if (sorte <= 0.80) {
+
+        resultado = '🍀 Trevo Raro';
+
+        recompensa =
+            Math.floor(Math.random() * 41) + 30;
+
+    } else if (sorte <= 0.95) {
+
+        resultado = '🌻 Flor Dourada';
+
+        recompensa =
+            Math.floor(Math.random() * 81) + 70;
+
+    } else {
+
+        resultado = '💎 Raiz Lendária';
+
+        recompensa =
+            Math.floor(Math.random() * 151) + 150;
     }
 
     golds[sender].gold += recompensa;
-    capinar[sender] = agora;
 
-    fs.writeFileSync(goldsPath, JSON.stringify(golds, null, 2));
-    fs.writeFileSync(capinarPath, JSON.stringify(capinar, null, 2));
+    fs.writeFileSync(
+        goldsPath,
+        JSON.stringify(golds, null, 2)
+    );
 
-    if (!fs.existsSync('./media/temp/capinar.jpg'))
-        return reply('❌ Imagem capinar.jpg não encontrada.');
+    fs.writeFileSync(
+        capinarPath,
+        JSON.stringify(capinar, null, 2)
+    );
 
-    await sock.sendMessage(from, {
-        image: fs.readFileSync('./media/temp/capinar.jpg'),
-        caption: `🌱 *CAPINA CONCLUÍDA!*
+    await sock.sendMessage(
+        from,
+        {
+            image: fs.readFileSync(
+                './media/temp/capinar.jpg'
+            ),
 
-🪓 Você limpou o terreno com sucesso!
+            caption:
+`🌱 *CAPINA CONCLUÍDA!*
 
-💰 Recompensa: +${recompensa} Golds
+${resultado}
 
-🏦 Saldo atual: ${golds[sender].gold} Golds
+💰 Recompensa:
++${recompensa} Golds
 
-⏳ Você poderá capinar novamente em 8 horas.`
-    }, {
-        quoted: info
-    });
+📦 Usos:
+${capinar[sender].usos}/3
+
+🏦 Saldo:
+${golds[sender].gold} Golds
+
+⏳ As tentativas recarregam em 3 horas.`
+        },
+        {
+            quoted: info
+        }
+    );
 }
 break;
-
 case 'pescar': {
     const fs = require('fs');
 
     const goldsPath = './assets/golds.json';
+    const inventarioPath = './assets/inventario.json';
     const pescarPath = './assets/pescar.json';
 
     let golds = fs.existsSync(goldsPath)
         ? JSON.parse(fs.readFileSync(goldsPath))
         : {};
 
+    let inventario = fs.existsSync(inventarioPath)
+        ? JSON.parse(fs.readFileSync(inventarioPath))
+        : {};
+
     let pescar = fs.existsSync(pescarPath)
         ? JSON.parse(fs.readFileSync(pescarPath))
         : {};
 
-    const cooldown = 8 * 60 * 60 * 1000;
-    const recompensa = 15;
+    if (
+        !inventario[sender] ||
+        !inventario[sender].itens ||
+        !inventario[sender].itens.includes('Vara de Pesca')
+    ) {
+        return reply(
+            '🎣 Você precisa comprar uma *Vara de Pesca*.\n\nUse: !loja'
+        );
+    }
 
-    if (!golds[sender]) golds[sender] = { gold: 0 };
+    if (!golds[sender]) {
+        golds[sender] = {
+            gold: 0
+        };
+    }
 
+    const cooldown = 3 * 60 * 60 * 1000;
     const agora = Date.now();
 
-    if (pescar[sender]) {
-        const restante = cooldown - (agora - pescar[sender]);
+    if (!pescar[sender]) {
+        pescar[sender] = {
+            usos: 0,
+            ultimoReset: agora
+        };
+    }
+
+    if (
+        agora - pescar[sender].ultimoReset >= cooldown
+    ) {
+        pescar[sender].usos = 0;
+        pescar[sender].ultimoReset = agora;
+    }
+
+    if (pescar[sender].usos >= 3) {
+
+        const restante =
+            cooldown -
+            (agora - pescar[sender].ultimoReset);
+
+        const horas =
+            Math.floor(restante / 3600000);
+
+        const minutos =
+            Math.floor(
+                (restante % 3600000) / 60000
+            );
+
+        return reply(
+            `🎣 Você já usou suas 3 pescarias!\n\n⏳ Aguarde ${horas}h ${minutos}min.`
+        );
+    }
+
+    pescar[sender].usos++;
+
+    const sorte = Math.random();
+
+    let peixe;
+    let recompensa;
+
+    if (sorte <= 0.50) {
+
+        peixe = '🐟 Tilápia';
+
+        recompensa =
+            Math.floor(Math.random() * 21) + 10;
+
+    } else if (sorte <= 0.80) {
+
+        peixe = '🐠 Dourado';
+
+        recompensa =
+            Math.floor(Math.random() * 41) + 30;
+
+    } else if (sorte <= 0.95) {
+
+        peixe = '🦈 Tubarão';
+
+        recompensa =
+            Math.floor(Math.random() * 81) + 70;
+
+    } else {
+
+        peixe = '🐉 Peixe Lendário';
+
+        recompensa =
+            Math.floor(Math.random() * 151) + 150;
+    }
+
+    golds[sender].gold += recompensa;
+
+    fs.writeFileSync(
+        goldsPath,
+        JSON.stringify(golds, null, 2)
+    );
+
+    fs.writeFileSync(
+        pescarPath,
+        JSON.stringify(pescar, null, 2)
+    );
+
+    await sock.sendMessage(
+        from,
+        {
+            image: fs.readFileSync(
+                './media/temp/pescar.jpg'
+            ),
+
+            caption:
+`🎣 *PESCARIA CONCLUÍDA!*
+
+${peixe}
+
+💰 Recompensa:
++${recompensa} Golds
+
+📦 Usos:
+${pescar[sender].usos}/3
+
+🏦 Saldo:
+${golds[sender].gold} Golds
+
+⏳ As tentativas recarregam em 3 horas.`
+        },
+        {
+            quoted: info
+        }
+    );
+}
+break;
+                case 'roubar2': {
+try {
+
+const fs = require('fs');
+
+const goldsPath = './assets/golds.json';
+const roubosPath = './assets/roubar2.json';
+
+let golds = fs.existsSync(goldsPath)
+? JSON.parse(fs.readFileSync(goldsPath))
+: {};
+
+let roubos = fs.existsSync(roubosPath)
+? JSON.parse(fs.readFileSync(roubosPath))
+: {};
+
+if (!quoted)
+return reply(
+`❌ Responda a mensagem da pessoa que deseja roubar.`
+);
+
+let alvo =
+info.message?.extendedTextMessage?.contextInfo?.participant;
+
+if (!alvo)
+return reply('❌ Não consegui identificar a vítima.');
+
+if (alvo === sender)
+return reply('❌ Você não pode roubar a si mesmo.');
+
+console.log('ALVO:', alvo);
+
+// cria conta automaticamente se não existir
+if (!golds[alvo]) {
+golds[alvo] = {
+gold: 100
+};
+
+fs.writeFileSync(
+goldsPath,
+JSON.stringify(golds, null, 2)
+);
+}
+
+if (golds[alvo].gold <= 0)
+return reply('❌ Essa pessoa está sem golds.');
+
+if (!golds[sender]) {
+golds[sender] = {
+gold: 0
+};
+}
+
+const agora = Date.now();
+
+if (!roubos[sender]) {
+roubos[sender] = {
+tentativas: 0,
+tempo: 0
+};
+}
+
+if (roubos[sender].tentativas >= 3) {
+
+const restante =
+(2 * 60 * 60 * 1000) -
+(agora - roubos[sender].tempo);
+
+if (restante > 0) {
+
+const horas =
+Math.floor(restante / 3600000);
+
+const minutos =
+Math.floor((restante % 3600000) / 60000);
+
+return reply(
+`🚔 Você já usou suas 3 tentativas.
+
+⏳ Aguarde ${horas}h ${minutos}m para tentar novamente.`
+);
+
+}
+
+roubos[sender].tentativas = 0;
+}
+
+const sucesso = Math.random() < 0.6;
+
+if (sucesso) {
+
+const valor = Math.min(
+golds[alvo].gold,
+Math.floor(Math.random() * 100) + 20
+);
+
+golds[alvo].gold -= valor;
+golds[sender].gold += valor;
+
+roubos[sender].tentativas++;
+
+if (roubos[sender].tentativas >= 3)
+roubos[sender].tempo = agora;
+
+fs.writeFileSync(
+goldsPath,
+JSON.stringify(golds, null, 2)
+);
+
+fs.writeFileSync(
+roubosPath,
+JSON.stringify(roubos, null, 2)
+);
+
+await sock.sendMessage(
+from,
+{
+text:
+`🦹 *ROUBO REALIZADO!*
+
+💰 Valor roubado: ${valor} Golds
+
+👤 Vítima:
+@${alvo.split('@')[0]}
+
+🏦 Seu saldo:
+${golds[sender].gold} Golds
+
+🎯 Tentativas:
+${roubos[sender].tentativas}/3`,
+mentions: [alvo]
+},
+{
+quoted: info
+}
+);
+
+} else {
+
+const multa = Math.min(
+golds[sender].gold,
+Math.floor(Math.random() * 50) + 10
+);
+
+golds[sender].gold -= multa;
+
+roubos[sender].tentativas++;
+
+if (roubos[sender].tentativas >= 3)
+roubos[sender].tempo = agora;
+
+fs.writeFileSync(
+goldsPath,
+JSON.stringify(golds, null, 2)
+);
+
+fs.writeFileSync(
+roubosPath,
+JSON.stringify(roubos, null, 2)
+);
+
+await sock.sendMessage(
+from,
+{
+text:
+`🚔 *VOCÊ FOI PEGO!*
+
+💸 Multa:
+-${multa} Golds
+
+🏦 Seu saldo:
+${golds[sender].gold} Golds
+
+🎯 Tentativas:
+${roubos[sender].tentativas}/3`
+},
+{
+quoted: info
+}
+);
+
+}
+
+} catch (e) {
+console.log(e);
+reply('❌ Erro ao executar o roubo.');
+}
+}
+break;
+                case 'lenhar': {
+    const fs = require('fs');
+
+    const goldsPath = './assets/golds.json';
+    const inventarioPath = './assets/inventario.json';
+    const lenharPath = './assets/lenhar.json';
+
+    let golds = fs.existsSync(goldsPath)
+        ? JSON.parse(fs.readFileSync(goldsPath))
+        : {};
+
+    let inventario = fs.existsSync(inventarioPath)
+        ? JSON.parse(fs.readFileSync(inventarioPath))
+        : {};
+
+    let lenhar = fs.existsSync(lenharPath)
+        ? JSON.parse(fs.readFileSync(lenharPath))
+        : {};
+
+    if (
+        !inventario[sender] ||
+        !inventario[sender].itens ||
+        !inventario[sender].itens.includes('Machado')
+    ) {
+        return reply(
+            '🪵 Você precisa comprar um *Machado*.\n\nUse: !loja'
+        );
+    }
+
+    if (!golds[sender]) {
+        golds[sender] = {
+            gold: 0
+        };
+    }
+
+    const cooldown = 3 * 60 * 60 * 1000;
+    const agora = Date.now();
+
+    if (!lenhar[sender]) {
+        lenhar[sender] = {
+            usos: 0,
+            ultimoReset: agora
+        };
+    }
+
+    if (
+        agora - lenhar[sender].ultimoReset >= cooldown
+    ) {
+        lenhar[sender].usos = 0;
+        lenhar[sender].ultimoReset = agora;
+    }
+
+    if (lenhar[sender].usos >= 3) {
+
+        const restante =
+            cooldown -
+            (agora - lenhar[sender].ultimoReset);
+
+        const horas =
+            Math.floor(restante / 3600000);
+
+        const minutos =
+            Math.floor(
+                (restante % 3600000) / 60000
+            );
+
+        return reply(
+            `🪵 Você já cortou lenha 3 vezes!\n\n⏳ Aguarde ${horas}h ${minutos}min.`
+        );
+    }
+
+    lenhar[sender].usos++;
+
+    const sorte = Math.random();
+
+    let madeira;
+    let recompensa;
+
+    if (sorte <= 0.50) {
+
+        madeira = '🌳 Madeira Comum';
+
+        recompensa =
+            Math.floor(Math.random() * 21) + 10;
+
+    } else if (sorte <= 0.80) {
+
+        madeira = '🌲 Madeira Resistente';
+
+        recompensa =
+            Math.floor(Math.random() * 41) + 30;
+
+    } else if (sorte <= 0.95) {
+
+        madeira = '🍁 Madeira Nobre';
+
+        recompensa =
+            Math.floor(Math.random() * 81) + 70;
+
+    } else {
+
+        madeira = '✨ Madeira Lendária';
+
+        recompensa =
+            Math.floor(Math.random() * 151) + 150;
+    }
+
+    golds[sender].gold += recompensa;
+
+    fs.writeFileSync(
+        goldsPath,
+        JSON.stringify(golds, null, 2)
+    );
+
+    fs.writeFileSync(
+        lenharPath,
+        JSON.stringify(lenhar, null, 2)
+    );
+
+    await sock.sendMessage(
+        from,
+        {
+            image: fs.readFileSync(
+                './media/temp/lenhar.jpg'
+            ),
+            caption:
+`🪵 *CORTE DE LENHA CONCLUÍDO!*
+
+${madeira}
+
+💰 Recompensa:
++${recompensa} Golds
+
+📦 Usos:
+${lenhar[sender].usos}/3
+
+🏦 Saldo:
+${golds[sender].gold} Golds
+
+⏳ As tentativas recarregam em 3 horas.`
+        },
+        {
+            quoted: info
+        }
+    );
+}
+break;
+                case 'comercios': {
+const fs = require('fs');
+
+const comercios = JSON.parse(
+fs.readFileSync('./assets/comercios.json')
+);
+
+let txt = '✨ *𝙽𝚘𝚜𝚜𝚘𝚜 𝙲𝚘𝚖é𝚛𝚌𝚒𝚘𝚜*\n';
+
+comercios.forEach(c => {
+
+txt += `🆔 ${c.id}\n`;
+txt += `🏢 ${c.nome}\n`;
+txt += `💰 *𝙿𝚛𝚎ç𝚘𝚜*: ${c.preco}\n`;
+txt += `📈 *𝙻𝚞𝚌𝚛𝚘*: ${c.lucro}\n\n`;
+
+});
+
+reply(txt);
+
+}
+break;
+                case 'comprarcomercio': {
+
+const fs = require('fs');
+
+const comercios = JSON.parse(
+fs.readFileSync('./assets/comercios.json')
+);
+
+let golds = JSON.parse(
+fs.readFileSync('./assets/golds.json')
+);
+
+let userComercios =
+fs.existsSync('./assets/usercomercios.json')
+?
+JSON.parse(
+fs.readFileSync('./assets/usercomercios.json')
+)
+:
+{};
+
+const id = Number(args[0]);
+
+if(!id)
+return reply(
+'Use:\n!comprarcomercio id'
+);
+
+const comercio =
+comercios.find(c => c.id === id);
+
+if(!comercio)
+return reply('Comércio não encontrado.');
+
+if(!golds[sender])
+golds[sender] = { gold: 0 };
+
+if(golds[sender].gold < comercio.preco)
+return reply('Golds insuficientes.');
+
+if(!userComercios[sender]) {
+
+userComercios[sender] = {
+comercios: []
+};
+
+}
+
+const possui =
+userComercios[sender]
+.comercios
+.find(c => c.id === comercio.id);
+
+if(possui)
+return reply(
+'Você já possui esse comércio.'
+);
+
+golds[sender].gold -= comercio.preco;
+
+userComercios[sender]
+.comercios
+.push({
+...comercio,
+ultimoResgate: Date.now()
+});
+
+fs.writeFileSync(
+'./assets/golds.json',
+JSON.stringify(golds,null,2)
+);
+
+fs.writeFileSync(
+'./assets/usercomercios.json',
+JSON.stringify(userComercios,null,2)
+);
+
+reply(
+`🏪 Comércio comprado!
+
+${comercio.nome}
+
+💰 Custou ${comercio.preco} Golds`
+);
+
+}
+break;
+                case 'resgatarcomercio': {
+
+const fs = require('fs');
+
+let golds = JSON.parse(
+fs.readFileSync('./assets/golds.json')
+);
+
+let userComercios =
+JSON.parse(
+fs.readFileSync('./assets/usercomercios.json')
+);
+
+if(
+!userComercios[sender] ||
+userComercios[sender].comercios.length === 0
+){
+return reply(
+'Você não possui comércios.'
+);
+}
+
+let total = 0;
+
+for(
+let comercio of
+userComercios[sender].comercios
+){
+
+const agora = Date.now();
+
+if(
+agora - comercio.ultimoResgate
+>= comercio.tempo
+){
+
+total += comercio.lucro;
+
+comercio.ultimoResgate =
+agora;
+
+}
+
+}
+
+if(total <= 0)
+return reply(
+'⏳ Nenhum comércio pronto para coleta.'
+);
+
+if(!golds[sender])
+golds[sender] = { gold: 0 };
+
+golds[sender].gold += total;
+
+fs.writeFileSync(
+'./assets/golds.json',
+JSON.stringify(golds,null,2)
+);
+
+fs.writeFileSync(
+'./assets/usercomercios.json',
+JSON.stringify(userComercios,null,2)
+);
+
+reply(
+`💸 Você coletou ${total} Golds dos seus comércios!\n\n🏦 Saldo: ${golds[sender].gold}`
+);
+
+}
+break;
+                case 'meuscomercios': {
+
+const fs = require('fs');
+
+const userComercios =
+JSON.parse(
+fs.readFileSync('./assets/usercomercios.json')
+);
+
+if (
+!userComercios[sender] ||
+userComercios[sender].comercios.length === 0
+) {
+return reply(
+'🏪 Você não possui comércios.'
+);
+}
+
+let txt =
+'🏪 *SEUS COMÉRCIOS*\n\n';
+
+let lucroTotal = 0;
+
+userComercios[sender]
+.comercios
+.forEach((c, i) => {
+
+lucroTotal += c.lucro;
+
+txt +=
+`${i + 1}. 🏢 ${c.nome}\n` +
+`📈 Lucro: ${c.lucro} Golds\n\n`;
+
+});
+
+txt +=
+`💰 Lucro total por coleta: ${lucroTotal} Golds`;
+
+await sock.sendMessage(
+from,
+{
+image: fs.readFileSync(
+'./media/temp/comercios.jpg'
+),
+caption: txt
+},
+{
+quoted: info
+}
+);
+
+}
+break;
+                case 'minerar': {
+    const fs = require('fs');
+
+    const goldsPath = './assets/golds.json';
+    const inventarioPath = './assets/inventario.json';
+    const minerarPath = './assets/minerar.json';
+
+    let golds = fs.existsSync(goldsPath)
+        ? JSON.parse(fs.readFileSync(goldsPath))
+        : {};
+
+    let inventario = fs.existsSync(inventarioPath)
+        ? JSON.parse(fs.readFileSync(inventarioPath))
+        : {};
+
+    let minerar = fs.existsSync(minerarPath)
+        ? JSON.parse(fs.readFileSync(minerarPath))
+        : {};
+
+    if (
+        !inventario[sender] ||
+        !inventario[sender].itens ||
+        !inventario[sender].itens.includes('Picareta')
+    ) {
+        return reply(
+            '⛏️ Você precisa comprar uma *Picareta*.\n\nUse: !loja'
+        );
+    }
+
+    if (!golds[sender]) {
+        golds[sender] = {
+            gold: 0
+        };
+    }
+
+    const cooldown = 3 * 60 * 60 * 1000; // 3 horas
+    const agora = Date.now();
+
+    if (!minerar[sender]) {
+        minerar[sender] = {
+            usos: 0,
+            ultimoReset: agora
+        };
+    }
+
+    // Reseta após 3 horas
+    if (
+        agora - minerar[sender].ultimoReset >= cooldown
+    ) {
+        minerar[sender].usos = 0;
+        minerar[sender].ultimoReset = agora;
+    }
+
+    // Máximo 3 usos
+    if (minerar[sender].usos >= 3) {
+
+        const restante =
+            cooldown -
+            (agora - minerar[sender].ultimoReset);
+
+        const horas =
+            Math.floor(restante / 3600000);
+
+        const minutos =
+            Math.floor(
+                (restante % 3600000) / 60000
+            );
+
+        return reply(
+            `⛏️ Você já usou suas 3 minerações!\n\n⏳ Aguarde ${horas}h ${minutos}min.`
+        );
+    }
+
+    minerar[sender].usos++;
+
+    const sorte = Math.random();
+
+    let mineral;
+    let recompensa;
+
+    if (sorte <= 0.50) {
+
+        mineral = '🪨 Pedra';
+
+        recompensa =
+            Math.floor(Math.random() * 21) + 10;
+
+    } else if (sorte <= 0.80) {
+
+        mineral = '⛓️ Ferro';
+
+        recompensa =
+            Math.floor(Math.random() * 41) + 30;
+
+    } else if (sorte <= 0.95) {
+
+        mineral = '🥇 Ouro';
+
+        recompensa =
+            Math.floor(Math.random() * 81) + 70;
+
+    } else {
+
+        mineral = '💎 Diamante';
+
+        recompensa =
+            Math.floor(Math.random() * 151) + 150;
+    }
+
+    golds[sender].gold += recompensa;
+
+    fs.writeFileSync(
+        goldsPath,
+        JSON.stringify(golds, null, 2)
+    );
+
+    fs.writeFileSync(
+        minerarPath,
+        JSON.stringify(minerar, null, 2)
+    );
+
+    await sock.sendMessage(
+        from,
+        {
+            image: fs.readFileSync(
+                './media/temp/minerar.jpg'
+            ),
+
+            caption:
+`⛏️ *MINERAÇÃO CONCLUÍDA!*
+
+${mineral}
+
+💰 Recompensa:
++${recompensa} Golds
+
+📦 Usos:
+${minerar[sender].usos}/3
+
+🏦 Saldo:
+${golds[sender].gold} Golds
+
+⏳ As tentativas recarregam em 3 horas.`
+        },
+        {
+            quoted: info
+        }
+    );
+}
+break;
+                case 'loja': {
+    const fs = require('fs');
+
+    const loja = JSON.parse(
+        fs.readFileSync('./assets/loja.json')
+    );
+
+    let texto = '🛒 *LOJA RPG*\n\n';
+
+    loja.forEach(item => {
+        texto += `${item.id} - ${item.emoji} ${item.nome}\n`;
+        texto += `💰 ${item.preco} Golds\n\n`;
+    });
+
+    texto += '🛍️ Use:\n!compraritem número';
+
+    reply(texto);
+}
+break;
+                case 'compraritem': {
+    const fs = require('fs');
+
+    const loja = JSON.parse(
+        fs.readFileSync('./assets/loja.json')
+    );
+
+    const goldsPath = './assets/golds.json';
+    const inventarioPath = './assets/inventario.json';
+
+    let golds = JSON.parse(
+        fs.readFileSync(goldsPath)
+    );
+
+    let inventario = fs.existsSync(inventarioPath)
+        ? JSON.parse(fs.readFileSync(inventarioPath))
+        : {};
+
+    const id = Number(args[0]);
+
+    if (!id)
+        return reply(
+            '🛒 Use:\n!compraritem número'
+        );
+
+    const item = loja.find(x => x.id === id);
+
+    if (!item)
+        return reply('❌ Item não encontrado.');
+
+    if (!golds[sender])
+        golds[sender] = { gold: 0 };
+
+    if (golds[sender].gold < item.preco)
+        return reply(
+            `❌ Você precisa de ${item.preco} Golds.`
+        );
+
+    if (!inventario[sender]) {
+        inventario[sender] = {
+            itens: []
+        };
+    }
+
+    if (
+        inventario[sender].itens.includes(item.nome)
+    ) {
+        return reply(
+            '❌ Você já possui este item.'
+        );
+    }
+
+    golds[sender].gold -= item.preco;
+
+    inventario[sender].itens.push(
+        item.nome
+    );
+
+    fs.writeFileSync(
+        goldsPath,
+        JSON.stringify(golds, null, 2)
+    );
+
+    fs.writeFileSync(
+        inventarioPath,
+        JSON.stringify(inventario, null, 2)
+    );
+
+    reply(
+`✅ ITEM COMPRADO
+
+${item.emoji} ${item.nome}
+
+💰 Custo: ${item.preco} Golds
+
+🏦 Saldo atual:
+${golds[sender].gold} Golds`
+    );
+}
+break;
+                case 'inventario': {
+    const fs = require('fs');
+
+    const inventarioPath =
+        './assets/inventario.json';
+
+    const inventario =
+        fs.existsSync(inventarioPath)
+            ? JSON.parse(
+                  fs.readFileSync(inventarioPath)
+              )
+            : {};
+
+    if (
+        !inventario[sender] ||
+        inventario[sender].itens.length === 0
+    ) {
+        return reply(
+            '🎒 Você não possui itens.'
+        );
+    }
+
+    let texto =
+`🎒 *SEU INVENTÁRIO*
+
+`;
+
+    inventario[sender].itens.forEach(
+        item => {
+            texto += `• ${item}\n`;
+        }
+    );
+
+    reply(texto);
+}
+break;
+                case 'pix': {
+    const fs = require('fs');
+
+    const goldsPath = './assets/golds.json';
+
+    let golds = fs.existsSync(goldsPath)
+        ? JSON.parse(fs.readFileSync(goldsPath))
+        : {};
+
+    const alvo =
+        info.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0] ||
+        info.message?.extendedTextMessage?.contextInfo?.participant;
+
+    const valor = parseInt(args[1]);
+
+    if (!alvo)
+        return reply('❌ Marque alguém.\n\nExemplo:\n!pix @usuario 500');
+
+    if (isNaN(valor) || valor <= 0)
+        return reply('❌ Informe um valor válido.');
+
+    if (!golds[sender])
+        golds[sender] = { gold: 0 };
+
+    if (!golds[alvo])
+        golds[alvo] = { gold: 0 };
+
+    if (golds[sender].gold < valor)
+        return reply('❌ Você não possui golds suficientes.');
+
+    golds[sender].gold -= valor;
+    golds[alvo].gold += valor;
+
+    fs.writeFileSync(
+        goldsPath,
+        JSON.stringify(golds, null, 2)
+    );
+
+    await sock.sendMessage(from, {
+        text:
+`💸 *PIX REALIZADO*
+
+👤 Destinatário: @${alvo.split('@')[0]}
+
+💰 Valor: ${valor} Golds
+
+🏦 Seu saldo: ${golds[sender].gold} Golds`,
+        mentions: [alvo]
+    }, {
+        quoted: info
+    });
+}
+break;
+                case 'cofrinho': {
+    const fs = require('fs');
+
+    const goldsPath = './assets/golds.json';
+    const cofrinhoPath = './assets/cofrinho.json';
+
+    let golds = fs.existsSync(goldsPath)
+        ? JSON.parse(fs.readFileSync(goldsPath))
+        : {};
+
+    let cofrinho = fs.existsSync(cofrinhoPath)
+        ? JSON.parse(fs.readFileSync(cofrinhoPath))
+        : {};
+
+    if (!golds[sender])
+        golds[sender] = { gold: 0 };
+
+    if (!cofrinho[sender])
+        cofrinho[sender] = { gold: 0 };
+
+    const acao = args[0];
+    const valor = parseInt(args[1]);
+
+    if (!acao)
+        return reply(
+`🐷 COFRINHO
+
+!cofrinho guardar 500
+!cofrinho sacar 500
+!cofrinho saldo`
+        );
+
+    if (acao === 'guardar') {
+
+        if (isNaN(valor) || valor <= 0)
+            return reply('❌ Valor inválido.');
+
+        if (golds[sender].gold < valor)
+            return reply('❌ Você não possui golds suficientes.');
+
+        golds[sender].gold -= valor;
+        cofrinho[sender].gold += valor;
+
+    } else if (acao === 'sacar') {
+
+        if (isNaN(valor) || valor <= 0)
+            return reply('❌ Valor inválido.');
+
+        if (cofrinho[sender].gold < valor)
+            return reply('❌ Você não possui esse valor no cofrinho.');
+
+        cofrinho[sender].gold -= valor;
+        golds[sender].gold += valor;
+
+    } else if (acao === 'saldo') {
+
+        return reply(
+`🐷 COFRINHO
+
+💰 Guardado: ${cofrinho[sender].gold} Golds`
+        );
+
+    }
+
+    fs.writeFileSync(goldsPath, JSON.stringify(golds, null, 2));
+    fs.writeFileSync(cofrinhoPath, JSON.stringify(cofrinho, null, 2));
+
+    reply(
+`🐷 COFRINHO ATUALIZADO
+
+🏦 Carteira: ${golds[sender].gold} Golds
+
+💰 Cofrinho: ${cofrinho[sender].gold} Golds`
+    );
+}
+break;
+                case 'daily': {
+    const fs = require('fs');
+
+    const goldsPath = './assets/golds.json';
+    const dailyPath = './assets/daily.json';
+
+    let golds = fs.existsSync(goldsPath)
+        ? JSON.parse(fs.readFileSync(goldsPath))
+        : {};
+
+    let daily = fs.existsSync(dailyPath)
+        ? JSON.parse(fs.readFileSync(dailyPath))
+        : {};
+
+    const recompensa = 50;
+    const cooldown = 24 * 60 * 60 * 1000;
+    const agora = Date.now();
+
+    if (!golds[sender])
+        golds[sender] = { gold: 0 };
+
+    if (daily[sender]) {
+        const restante = cooldown - (agora - daily[sender]);
 
         if (restante > 0) {
             const horas = Math.floor(restante / 3600000);
             const minutos = Math.floor((restante % 3600000) / 60000);
 
-            return reply(`🎣 Você já pescou recentemente!\n\n⏳ Aguarde ${horas}h ${minutos}min para pescar novamente.`);
+            return reply(
+                `🎁 Você já resgatou seu daily!\n\n⏳ Volte em ${horas}h ${minutos}min.`
+            );
         }
     }
 
     golds[sender].gold += recompensa;
-    pescar[sender] = agora;
+    daily[sender] = agora;
 
     fs.writeFileSync(goldsPath, JSON.stringify(golds, null, 2));
-    fs.writeFileSync(pescarPath, JSON.stringify(pescar, null, 2));
-
-    if (!fs.existsSync('./media/temp/pescar.jpg'))
-        return reply('❌ Imagem pescar.jpg não encontrada.');
+    fs.writeFileSync(dailyPath, JSON.stringify(daily, null, 2));
 
     await sock.sendMessage(from, {
-        image: fs.readFileSync('./media/temp/pescar.jpg'),
-        caption: `🎣 *PESCARIA CONCLUÍDA!*
-
-🐟 Você voltou do rio com uma ótima pescaria!
+        image: fs.readFileSync('./media/temp/daily.jpg'),
+        caption:
+`🎁 *DAILY RESGATADO!*
 
 💰 Recompensa: +${recompensa} Golds
 
 🏦 Saldo atual: ${golds[sender].gold} Golds
 
-⏳ Você poderá pescar novamente em 8 horas.`
+⏳ Volte amanhã para resgatar novamente.`
     }, {
         quoted: info
     });
@@ -2012,6 +3427,85 @@ reply(
 
 }
 break;
+                case 'passearpet': {
+    const fs = require('fs');
+
+    const goldsPath = './assets/golds.json';
+    const petsPath = './assets/userpets.json';
+    const passeioPath = './assets/passearpet.json';
+
+    let golds = fs.existsSync(goldsPath)
+        ? JSON.parse(fs.readFileSync(goldsPath))
+        : {};
+
+    let pets = fs.existsSync(petsPath)
+        ? JSON.parse(fs.readFileSync(petsPath))
+        : {};
+
+    let passeio = fs.existsSync(passeioPath)
+        ? JSON.parse(fs.readFileSync(passeioPath))
+        : {};
+
+    if (!pets[sender] || !pets[sender].pets || pets[sender].pets.length < 1)
+        return reply('🐾 Você não possui nenhum pet.');
+
+    if (!golds[sender])
+        golds[sender] = { gold: 0 };
+
+    const agora = Date.now();
+    const cooldown = 2 * 60 * 60 * 1000;
+
+    if (!passeio[sender]) {
+        passeio[sender] = {
+            usos: 0,
+            ultimoReset: agora
+        };
+    }
+
+    if (agora - passeio[sender].ultimoReset >= cooldown) {
+        passeio[sender].usos = 0;
+        passeio[sender].ultimoReset = agora;
+    }
+
+    if (passeio[sender].usos >= 2) {
+        const restante = cooldown - (agora - passeio[sender].ultimoReset);
+
+        const horas = Math.floor(restante / 3600000);
+        const minutos = Math.floor((restante % 3600000) / 60000);
+
+        return reply(
+            `🐾 Seu pet já passeou 2 vezes.\n\n⏳ Aguarde ${horas}h ${minutos}min.`
+        );
+    }
+
+    passeio[sender].usos++;
+
+    const recompensa = Math.floor(Math.random() * 31) + 20;
+
+    golds[sender].gold += recompensa;
+
+    fs.writeFileSync(goldsPath, JSON.stringify(golds, null, 2));
+    fs.writeFileSync(passeioPath, JSON.stringify(passeio, null, 2));
+
+    const pet = pets[sender].pets[0].nome;
+
+    await sock.sendMessage(from, {
+        image: fs.readFileSync('./media/temp/passearpet.jpg'),
+        caption:
+`🐾 *PASSEIO CONCLUÍDO!*
+
+🐶 ${pet} passeou pela cidade.
+
+💰 Encontrou: ${recompensa} Golds
+
+📦 Passeios usados: ${passeio[sender].usos}/2
+
+🏦 Saldo atual: ${golds[sender].gold} Golds`
+    }, {
+        quoted: info
+    });
+}
+break;
                 case 'ranking': {
 
 let db = carregarGold();
@@ -2030,6 +3524,148 @@ texto +=
 
 reply(texto);
 
+}
+break;
+                case 'investir': {
+    const fs = require('fs');
+
+    const goldsPath = './assets/golds.json';
+    const investimentosPath = './assets/investimentos.json';
+
+    let golds = fs.existsSync(goldsPath)
+        ? JSON.parse(fs.readFileSync(goldsPath))
+        : {};
+
+    let investimentos = fs.existsSync(investimentosPath)
+        ? JSON.parse(fs.readFileSync(investimentosPath))
+        : {};
+
+    if (!golds[sender])
+        golds[sender] = { gold: 0 };
+
+    const valor = parseInt(args[0]);
+
+    if (!valor || valor <= 0)
+        return reply(
+`📈 *INVESTIMENTOS*
+
+Exemplo:
+!investir 1000
+
+Depois use:
+!resgatar`
+        );
+
+    if (golds[sender].gold < valor)
+        return reply('❌ Você não possui golds suficientes.');
+
+    if (investimentos[sender])
+        return reply(
+'❌ Você já possui um investimento ativo.\nUse !resgatar quando o prazo terminar.'
+        );
+
+    golds[sender].gold -= valor;
+
+    investimentos[sender] = {
+        valor,
+        inicio: Date.now()
+    };
+
+    fs.writeFileSync(
+        goldsPath,
+        JSON.stringify(golds, null, 2)
+    );
+
+    fs.writeFileSync(
+        investimentosPath,
+        JSON.stringify(investimentos, null, 2)
+    );
+
+    reply(
+`📈 *INVESTIMENTO REALIZADO*
+
+💰 Investido: ${valor} Golds
+
+⏳ Prazo: 24 horas
+
+🏦 Saldo atual: ${golds[sender].gold} Golds
+
+Use !resgatar após 24 horas.`
+    );
+}
+break;
+
+case 'resgatar': {
+    const fs = require('fs');
+
+    const goldsPath = './assets/golds.json';
+    const investimentosPath = './assets/investimentos.json';
+
+    let golds = fs.existsSync(goldsPath)
+        ? JSON.parse(fs.readFileSync(goldsPath))
+        : {};
+
+    let investimentos = fs.existsSync(investimentosPath)
+        ? JSON.parse(fs.readFileSync(investimentosPath))
+        : {};
+
+    if (!investimentos[sender])
+        return reply('❌ Você não possui nenhum investimento ativo.');
+
+    if (!golds[sender])
+        golds[sender] = { gold: 0 };
+
+    const investimento = investimentos[sender];
+
+    const tempoNecessario = 24 * 60 * 60 * 1000;
+    const passou = Date.now() - investimento.inicio;
+
+    if (passou < tempoNecessario) {
+
+        const restante = tempoNecessario - passou;
+
+        const horas = Math.floor(restante / 3600000);
+        const minutos = Math.floor((restante % 3600000) / 60000);
+
+        return reply(
+`⏳ Seu investimento ainda está rendendo.
+
+Faltam ${horas}h ${minutos}min para resgatar.`
+        );
+    }
+
+    const lucro = Math.floor(
+        investimento.valor *
+        (Math.random() * 0.20 + 0.10)
+    );
+
+    const total = investimento.valor + lucro;
+
+    golds[sender].gold += total;
+
+    delete investimentos[sender];
+
+    fs.writeFileSync(
+        goldsPath,
+        JSON.stringify(golds, null, 2)
+    );
+
+    fs.writeFileSync(
+        investimentosPath,
+        JSON.stringify(investimentos, null, 2)
+    );
+
+    reply(
+`📈 *INVESTIMENTO CONCLUÍDO*
+
+💰 Investido: ${investimento.valor}
+
+📊 Lucro: ${lucro}
+
+🏦 Recebido: ${total} Golds
+
+💳 Saldo atual: ${golds[sender].gold} Golds`
+    );
 }
 break;
 case 'gerarcpf':
@@ -3054,81 +4690,84 @@ case 'sugestão': {
     }
 }
 break;
+
 case 'ping': {
-    if (!isGroup) return reply(enviar.msg.group)
-    const os = require("os");
-    const { performance } = require("perf_hooks");
-    const inicio = performance.now();
-    reagir('⚡');
-    const fim = performance.now();
-    const latencia = fim - inicio;
+try {
+const fs = require('fs');
+const aluguel = JSON.parse(
+fs.readFileSync('./assets/aluguel.json', 'utf8')
+);
 
-    // Uptime formatado
-    function formatUptime(segundos) {
-        const d = Math.floor(segundos / (3600 * 24));
-        const h = Math.floor((segundos % (3600 * 24)) / 3600);
-        const m = Math.floor((segundos % 3600) / 60);
-        const s = Math.floor(segundos % 60);
-        return `${d}d, ${h}h, ${m}m e ${s}s`;
-    }
+const gruposAtivos = aluguel.filter(
+g => g.expira > Date.now()
+).length;
 
-    const uptime = formatUptime(process.uptime());
+const gruposTotal = aluguel.length;
 
-    // Infos do sistema
-    const so = os.type();            // Linux / Android / Windows
-    const versao = os.release();     // versão do kernel
-    const totalRAM = os.totalmem();  
-    const freeRAM = os.freemem();
-    const usedRAM = totalRAM - freeRAM;
-    const percRAM = (usedRAM / totalRAM) * 100;
+const uptime = process.uptime();
 
-    // CPU (uso aproximado)
-    const cpus = os.cpus();
-    const cpuModel = (cpus && cpus.length > 0 && cpus[0].model) 
-    ? cpus[0].model 
-    : "Indisponível";
-    let cpuUsage = 0;
+const dias = Math.floor(uptime / 86400);
+const horas = Math.floor((uptime % 86400) / 3600);
+const minutos = Math.floor((uptime % 3600) / 60);
+const segundos = Math.floor(uptime % 60);
 
-    for (let cpu of cpus) {
-        let total = 0;
-        for (let tipo in cpu.times) total += cpu.times[tipo];
-        cpuUsage += (1 - cpu.times.idle / total);
-    }
-    cpuUsage = (cpuUsage / cpus.length) * 100;
+const ram = (
+process.memoryUsage().rss /
+1024 /
+1024
+).toFixed(2);
 
-    // Versões
-    const nodeVer = process.version;
-    const baileysVer = require("baileys/package.json").version;
-const dataa = fs.readFileSync(__dirname + '/index.js', 'utf-8');
-const comanditos = [...dataa.matchAll(/case [`'"](\w+)[`'"]/g)].map(m => m[1]);
-const totalComandos = comanditos.length;
-await sock.sendMessage(from, {
-react: {
-text: '⚡',
-key: m.key
+const texto = `
+┎┈┈┈┈┈┈┈୨♡୧┈┈┈┈┈┈┈┒
+            𝗦𝘁𝗮𝘁𝘂𝘀 𝗱𝗼 𝗕𝗼𝘁
+┖┈┈┈┈┈┈┈୨♡୧┈┈┈┈┈┈┈┚
+
+
+⊹₊ ˚‧︵‿₊୨ *𝙿𝚒𝚗𝚐*: ${Date.now() % 100}ms [✨]
+
+⊹₊ ˚‧︵‿₊୨ *𝙾𝚗𝚕𝚒𝚗𝚎*:
+${dias}d ${horas}h ${minutos}m ${segundos}s [😦]
+
+⊹₊ ˚‧︵‿₊୨ *𝙶𝚛𝚞𝚙𝚘𝚜 𝙰𝚕𝚞𝚐𝚊𝚍𝚘𝚜* :
+${gruposTotal} [🔥]
+
+⊹₊ ˚‧︵‿₊୨ *𝙶𝚛𝚞𝚙𝚘𝚜 𝚊𝚝𝚒𝚟𝚘𝚜* :
+${gruposAtivos} [🕊️]
+
+⊹₊ ˚‧︵‿₊୨ *𝚁𝙰𝙼* :
+${ram} MB [🐔]
+
+⊹₊ ˚‧︵‿₊୨ *𝙿𝚕𝚊𝚝𝚊𝚏𝚘𝚛𝚖𝚊* :
+${process.platform} [💻]
+
+⊹₊ ˚‧︵‿₊୨ *𝙽𝚘𝚍𝚎* :
+${process.version} [📦]
+
+⊹₊ ˚‧︵‿₊୨ *𝙱𝚘𝚝* :
+${NomeDoBot} [🤖]
+
+⊹₊ ˚‧︵‿₊୨ *𝚅𝚎𝚛𝚜ã𝚘* :
+${version} [📱]
+
+ ───── ⋆⋅ ♰ ⋅⋆ ───── ⊰˖°`;
+
+await sock.sendMessage(
+from,
+{
+image: {
+url: 'https://files.catbox.moe/qxvtjv.jpeg' // troque pela sua foto
+},
+caption: texto
+},
+{
+quoted: info
 }
-});
-    const textPing = `
-📡 *Velocidade do Bot*
-• Latência: *${latencia.toFixed(0)} ms*
-• Uptime: *${uptime}*
+);
 
-🖥️ *Informações do Sistema*
-• Sistema: *${so}*
-• Kernel: *${versao}*
-• Comandos carregados: *${totalComandos}*
-
-• RAM usada: *( ${(usedRAM / 1024 / 1024 / 1024).toFixed(2)} GB )*
-• RAM livre: *( ${(freeRAM / 1024 / 1024 / 1024).toFixed(2)} GB )*
-• RAM total: *( ${(totalRAM / 1024 / 1024 / 1024).toFixed(2)} GB )*
-• Uso da RAM: *${percRAM.toFixed(2)}%*
-• Uso da CPU: *${cpuUsage.toFixed(2)}%*
-
-⚙️ *Versões*
-• Node.js: *${nodeVer}*
-• Baileys: *${baileysVer}*
-`;
-    await sock.sendMessage(from, { text: textPing.trim() }, { quoted: info });
+} catch (err) {
+console.log(err);
+reply('Erro ao verificar status.');
+}
 }
 break;
 case 'attp2': {
@@ -3277,48 +4916,51 @@ break;
                 case 'update': {
 
 if (!isDono)
-    return reply("❌ Apenas o dono pode usar.");
+return reply('Apenas o dono.');
 
-try {
+if (!q)
+return reply(
+`Use:\n${prefix}update check\n${prefix}update start`
+);
 
-    await reply(
-        "🔄 Verificando atualizações..."
-    );
+if (q === 'check') {
 
-    const resultado =
-        await atualizarBot();
+const dadosGithub =
+(await axios.get(VERSION_URL))
+.data;
 
-    await reply(
-        resultado.mensagem
-    );
-
-    if (!resultado.status)
-        break;
-
-    await reply(
-        "✅ Atualização concluída!"
-    );
-
-    await reply(
-        "♻️ Reiniciando em 5 segundos..."
-    );
-
-    setTimeout(() => {
-        process.exit(0);
-    }, 5000);
-
-} catch(err) {
-
-    console.log(err);
-
-    reply(
-`❌ Erro ao atualizar:
-
-${err.message}`
-    );
-
+if (
+dadosGithub.version === versao
+) {
+return reply(
+'✅ Você já está atualizado.'
+);
 }
 
+return reply(
+`🚀 Nova versão encontrada!
+
+📦 Atual: ${versao}
+📦 Nova: ${dadosGithub.version}
+
+📝 ${dadosGithub.mensagem}`
+);
+
+}
+                    if (q === 'start') {
+
+reply(
+'🚀 Iniciando atualização...'
+);
+
+const resultado =
+await atualizarBot();
+
+reply(resultado.mensagem);
+
+process.exit(0);
+
+}
 }
 break;
 case 'delvip': {
@@ -3908,7 +5550,6 @@ case 'plaq10': {
     }
 }
 break;
-case 'limpar':
 case 'limparchat':
 case 'limpar-chat': {
     try {
@@ -3970,45 +5611,6 @@ case 'ffavatar': {
     } catch (e) {
         console.log(e);
         reply("❌ Não consegui gerar seu avatar FF, tente novamente.");
-    }
-}
-break;
-case 'play': {
-    try {
-        if (!args[0]) return sock.sendMessage(from, { text: "Cadê o nome da música?\nEx:!play mc hariel" }, { quoted: info })
-        
-        await sock.sendMessage(from, { react: { text: "⌛", key: info.key } })
-        
-        let q = args.join(' ')
-        const { status, resultado } = await fetchJson(`https://yuta-apis.xyz/api/pesquisas/yt-search?apitoken=${TOKEN}&query=${encodeURIComponent(q.trim())}`)
-        
-        if (!status ||!resultado?.length) {
-            return sock.sendMessage(from, { text: "❌ Nenhum resultado encontrado pra essa pesquisa 😢" }, { quoted: info })
-        }
-        
-        const video = resultado[0].resultados
-        const { title, description, url, thumbnail, duration, views, author } = video
-        
-        const msgText = `*Toshi Uploads. . . • Downloads*\n\n📝 *Título:* ${title}\n👤 *Autor:* ${author?.name || 'Desconhecido'}\n📺 *Canal:* ${author?.url || 'N/A'}\n⏱️ *Duração:* ${duration?.timestamp || '❌ Não disponível'}\n👁️ *Visualizações:* ${views || '0'}\n🔗 *Link:* ${url}\n📌 *Descrição:* ${description?.slice(0, 100) || 'N/A'}`
-        
-        await sock.sendMessage(from, { image: { url: thumbnail }, caption: msgText }, { quoted: info })
-        
-        const audio = await getBuffer(`https://yuta-apis.xyz/api/downloads/ytaudio2?apitoken=${TOKEN}&url=${encodeURIComponent(url)}`)
-        
-        if (!audio) return sock.sendMessage(from, { text: "❌ Não foi possível baixar o áudio deste vídeo 😢" }, { quoted: info })
-        
-        await sock.sendMessage(from, { 
-            audio: audio, 
-            mimetype: "audio/mpeg", 
-            ptt: false, 
-            fileName: `${title}.mp3`
-        }, { quoted: info })
-        
-        await sock.sendMessage(from, { react: { text: "✅", key: info.key } })
-        
-    } catch (e) {
-        console.log("Erro em play:", e)
-        sock.sendMessage(from, { text: "❌ Erro ao processar.\n- Verifica se seu token da Yuta API ainda tem requests: https://yuta-apis.xyz" }, { quoted: info })
     }
 }
 break;
@@ -4702,42 +6304,25 @@ adeclip" \
   });
 
 } break;
-case 'totalcmd':
-case 'totalcomando':
-  if (!isDono) return reply(enviar.msg.dono);
-  try {
-    readFile(__dirname + '/index.js', 'utf8', async (err, data) => {
-      if (err) throw err;
-      const comandos = [...data.matchAll(/case [`'"](\w+)[`'"]/g)].map(m => m[1]);
-      await sock.sendMessage(from, { text: `Atualmente, eu tenho ${comandos.length} comandos...`}, { quoted: info });
-    });
-    } catch(e) {
-    console.error(e);
-    await sock.sendMessage(from, { text: '*Erro ao listar total de comandos*'}, { quoted: info });
-    }
-  break;
-  case 'cases':
-  if (!isDono) return reply(enviar.msg.dono)
-  try {
-    const indexContent = readFileSync(__dirname + '/index.js', 'utf-8');
-    const caseRegex = /case\s+'([^']+)'\s*:/g;
-    const cases = new Set();
-    let match;
-    while ((match = caseRegex.exec(indexContent)) !== null) {
-      cases.add(match[1]);
-    };
-    const multiCaseRegex = /case\s+'([^']+)'\s*:\s*case\s+'([^']+)'\s*:/g;
-    while ((match = multiCaseRegex.exec(indexContent)) !== null) {
-      cases.add(match[1]);
-      cases.add(match[2]);
-    };
-    const caseList = Array.from(cases).sort();
-    await sock.sendMessage(from, { text: `*Lista de Cases*:\n\n${caseList.join('\n')}\n\nTotal: ${caseList.length} comandos`}, { quoted: info});
-  } catch (e) {
-    console.error(e);
-    await sock.sendMessage(from, { text: '*Erro ao tentar listar cases*'}, { quoted: info });
-  }
-  break;
+                case 'totalcomando': {
+    const fs = require('fs');
+
+    const codigo = fs.readFileSync(
+        './index.js',
+        'utf8'
+    );
+
+    const total =
+        (codigo.match(/case\s+['"`]/g) || [])
+        .length;
+
+    reply(
+`😎 *𝙾 𝚃𝚘𝚝𝚊𝚕 𝚍𝚎 𝚌𝚘𝚖𝚊𝚗𝚍𝚘𝚜 𝚂𝚎𝚗𝚑𝚘𝚛/𝚊*
+
+✔ ${total} 𝙲𝚘𝚖𝚊𝚗𝚍𝚘𝚜 𝚌𝚊𝚍𝚊𝚜𝚝𝚛𝚊𝚍𝚘𝚜!`
+    );
+}
+break;
 case 'attp3':
 const gerarAttp3 = require("./assets/functions/attp3.js");
     if (!isGroup) return reply(enviar.msg.group)
@@ -4767,7 +6352,7 @@ if (!isGroup) return reply(enviar.msg.group);
 
     const pack = 'Toshiruz Bot';
     const author = 'Toshiruz Bot';
-
+const fs = require('fs');
     let content, mimetype, mediaType;
 
     if (isReply) {
@@ -4984,105 +6569,154 @@ ${saudacao}
     }
     break;
 }
-case 'play': { 
-  try {
-    if (!q?.trim()) return reply("Cadê o parâmetro: nome da música?");
-    await yuta.sendMessage(from, { react: { text: "⌛", key: info.key } });
-    const { status, resultado } = await fetchJson(`https://yuta-apis.xyz/api/pesquisas/yt-search?apitoken=${TOKEN}&query=${encodeURIComponent(q.trim())}`);
-    if (!status || !resultado?.length) {
-      return reply("❌ Nenhum resultado encontrado para essa pesquisa. 😢");
-    }
-    const video = resultado[0].resultados;
-    const { title, description, url, thumbnail, duration, views, author } = video;
-    const msgText = `Yuta API • Downloads\n\n📝 *Título:* ${title}
-👤 *Autor:* ${author?.name || 'Desconhecido'}
-📺 *Canal:* ${author?.url || 'N/A'}
-⏱️ *Duração:* ${duration.timestamp || '❌ Não disponível'}
-👁️ *Visualizações:* ${views || '0'}
-🔗 *Link:* ${url}
-📌 *Descrição:* ${description || 'N/A'}`;
-    await yuta.sendMessage(from, { image: { url: thumbnail }, caption: msgText }, { quoted: selo });
-    const audio = await getBuffer(`https://yuta-apis.xyz/api/downloads/ytaudio2?apitoken=${TOKEN}&url=${encodeURIComponent(url)}`);
-    if (!audio) return reply("❌ Não foi possível baixar o áudio deste vídeo. 😢");
-    await yuta.sendMessage(from, { audio, mimetype: "audio/mpeg", ptt: true, fileName: `${title}.mp3`}, { quoted: selo });
-    await yuta.sendMessage(from, { react: { text: "✅", key: info.key } });
-  } catch (e) {
-    console.log("Erro em play:", e.message);
-    reply("❌ Erro ao processar.\n- Acesse: https://yuta-apis.xyz e verifique se ainda contém requests no seu token.")
-  }
-}
-break;
+const ytdlp = require('yt-dlp-exec');
+const fs = require('fs');
 
-case 'playvideo': {
-const yts = require("yt-search");
-const { spawn } = require('child_process');
-const fs = require("fs");
-
-if (!isGroup) return reply(enviar.msg.group);
-if (!q) return reply("❗ *Digite o nome do vídeo*");
-reagir('🔎');
-
+case 'play': {
 try {
-    const search = await yts.search(q);
-    const vid = search.videos[0];
-    if (!vid) return reply("❌ Nenhum vídeo encontrado.");
 
-    const { title, url, thumbnail, author, timestamp, views, ago, description } = vid;
-    const viewsLocate = views.toLocaleString("pt-BR");
+if (!q?.trim())
+return reply("Cadê o nome da música?");
 
-    reagir('✅');
-    await sock.sendMessage(from, {
-        image: { url: thumbnail },
-        caption:
-`┎ׁ᳞͡┄⵿໋۫┅ꢶ╬ׁ︨⠟ּׂ𝆊̣֟፝͡⠻ׂ໋݄͞━ࣲᩫᰰᩬ𝕝𝝸ᩧ┅ְׂ𝆋֮۫۫۫͜🎶ְ֮ᤢ┅ᩙּ໋𝆋ࣼᩬ𝝸𝕝ᩫᰰ━ֵׂ݄۫۫͞⠟ׁ̣𝆊֟፝͡⠻︧╬ꢶ┅⵿໋۫┄ᮬ᳞͡┒
+await sock.sendMessage(from, {
+react: {
+text: "⌛",
+key: info.key
+}
+});
 
-📽️ *PLAY VIDEO – Música encontrada*
+const pesquisa = await fetchJson(
+`https://yuta-apis.xyz/api/pesquisas/yt-search?apitoken=${TOKEN}&query=${encodeURIComponent(q.trim())}`
+);
 
-📌 *Título:* ${title}
-👤 *Canal:* ${author.name}
-⏳ *Duração:* ▶︎ •၊၊||၊|။||||।‌‌‌‌‌၊|• ${timestamp}
-👁️ *Views:* ${viewsLocate}
-📅 *Publicado:* ${ago}
-📝 *Descrição:* ${description || "Sem descrição."}
-🔗 *URL:* ${url}
+if (!pesquisa?.status || !pesquisa?.resultado?.length)
+return reply("❌ Nenhum resultado encontrado.");
 
-Baixando áudio, aguarde... 🎧
+const video = pesquisa.resultado[0].resultados;
 
-┕┄⵿໋۫┅ꢶ╬ׁ︨⠟ּׂ𝆊̣֟፝͡⠻ׂ໋݄͞━ࣲᩫᰰᩬ𝕝𝝸ᩧ┅ְׂ𝆋֮۫۫۫͜🎶ְ֮ᤢ┅ᩙּ໋𝆋ࣼᩬ𝝸𝕝ᩫᰰ━ֵׂ݄۫۫͞⠟ׁ̣𝆊֟፝͡⠻︧╬ꢶ┅⵿໋۫┄ᮬ᳞͡┙`
-    }, { quoted: selometa });
+const {
+title,
+description,
+url,
+thumbnail,
+duration,
+views,
+author
+} = video;
 
-    const ytdlpPath = "/data/data/com.termux/files/usr/bin/yt-dlp";
+const legenda =
+`🎵 *${title}*
 
-    const tempFile = `./media/video_${Date.now()}.mp4`;
+👤 Autor: ${author?.name || 'Desconhecido'}
+📺 Canal: ${author?.url || 'N/A'}
+⏱️ Duração: ${duration?.timestamp || 'N/A'}
+👁️ Views: ${views || 0}
 
-    const process = spawn(ytdlpPath, [
-        "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/mp4",
-        "--merge-output-format", "mp4",
-        "-o", tempFile,
-        url
-    ]);
+🔗 ${url}
 
-    process.on("close", async () => {
-        if (!fs.existsSync(tempFile)) {
-            return reply("❌ Erro ao baixar o vídeo.");
-        }
+📌 ${description || 'Sem descrição'}`;
 
-        await sock.sendMessage(from, {
-            video: fs.readFileSync(tempFile),
-            mimetype: "video/mp4"
-        }, { quoted: selometa });
+await sock.sendMessage(
+from,
+{
+image: {
+url: thumbnail
+},
+caption: legenda
+},
+{
+quoted: info
+}
+);
 
-        fs.unlinkSync(tempFile); // remover arquivo temporário
-    });
+const audio = await getBuffer(
+`https://yuta-apis.xyz/api/downloads/ytaudio2?apitoken=${TOKEN}&url=${encodeURIComponent(url)}`
+);
 
-    process.on("error", err => {
-        console.error("yt-dlp error:", err);
-        reply("❌ Erro ao baixar o vídeo.");
-    });
+if (!audio)
+return reply("❌ Não consegui baixar o áudio.");
+
+await sock.sendMessage(
+from,
+{
+audio,
+mimetype: "audio/mpeg",
+ptt: false,
+fileName: `${title}.mp3`
+},
+{
+quoted: info
+}
+);
+
+await sock.sendMessage(from, {
+react: {
+text: "✅",
+key: info.key
+}
+});
 
 } catch (e) {
-    console.log(e);
-    reply(`❌ Erro ao processar o comando ${prefix}playvideo.`);
+
+console.log("Erro play:", e);
+
+reply(
+`❌ Erro ao processar.
+
+${e.message}`
+);
+
+}
+}
+break;
+                case 'playvideo':
+case 'ytmp4':
+case 'playvid':
+case 'playmp4': {
+try {
+
+if (!q?.trim())
+return reply(`🎵 Exemplo: ${prefix}playvideo meu malvado favorito`);
+
+await sock.sendMessage(from, {
+react: {
+text: "⌛",
+key: info.key
+}
+});
+
+const video = await getBuffer(
+`https://yuta-apis.xyz/api/downloads/play-video2?apitoken=${TOKEN}&query=${encodeURIComponent(q.trim())}`
+);
+
+if (!video)
+return reply("❌ Nenhum vídeo encontrado.");
+
+await sock.sendMessage(
+from,
+{
+video: Buffer.from(video),
+mimetype: "video/mp4",
+fileName: `${q.trim()}.mp4`
+},
+{
+quoted: info
+}
+);
+
+await sock.sendMessage(from, {
+react: {
+text: "✅",
+key: info.key
+}
+});
+
+} catch (e) {
+
+console.log("Erro em playvideo:", e);
+
+reply("❌ Erro ao baixar o vídeo.");
+
 }
 }
 break;
@@ -5148,28 +6782,73 @@ try {
 break;
 }
 case 'legendabv': {
-    if (!isGroup) return reply(enviar.msg.group);
-    if (!isAdmin) return reply(enviar.msg.adm);
-    if (!isBotAdmin) return reply(enviar.msg.botadm)
-    if (!q) return reply("❗ Digite a nova legenda.\nEx: #legendabv Bem-vindo @user!");
 
-    // verifica se bem-vindo está ativado
-    const pathBem = './database/bemvindo.json';
-    let bem = {};
-    if (fs.existsSync(pathBem)) bem = JSON.parse(fs.readFileSync(pathBem));
+if (!isGroup) return reply('❌ Apenas em grupos.');
+if (!isAdmin) return reply('❌ Apenas administradores.');
 
-    if (!bem[from]) return reply("❗ Ative o sistema de boas-vindas neste grupo!");
+if (!q)
+return reply(
+`❌ Informe a nova legenda.
 
-    // salva legenda
-    const pathLeg = './assets/legendas.json';
-    let legendas = {};
-    if (fs.existsSync(pathLeg)) legendas = JSON.parse(fs.readFileSync(pathLeg));
+Exemplo:
+${prefix}legendabv 👋 Olá {membro}
 
-    legendas[groupId] = q;
+Bem-vindo ao {grupo}`
+);
 
-    fs.writeFileSync(pathLeg, JSON.stringify(legendas, null, 2));
+const fs = require('fs');
+const path = './assets/bemvindo.json';
 
-    reply(`✨ *Legenda de boas-vindas atualizada!*\n\nNova legenda:\n"${q}"`);
+let db = fs.existsSync(path)
+? JSON.parse(fs.readFileSync(path))
+: {};
+
+if (!db[from]) {
+db[from] = {
+ativo: true,
+legenda: ""
+};
+}
+
+db[from].legenda = q;
+
+fs.writeFileSync(path, JSON.stringify(db, null, 2));
+
+reply('✅ Legenda de boas-vindas alterada.');
+
+}
+break;
+                case 'infobv': {
+
+reply(
+`📚 VARIÁVEIS DO BEM-VINDO
+
+{membro}
+➜ Marca o membro que entrou
+
+{grupo}
+➜ Nome do grupo
+
+{data}
+➜ Data atual
+
+{hora}
+➜ Hora atual
+
+{total}
+➜ Quantidade de membros
+
+Exemplo:
+
+👋 Olá {membro}
+
+Seja bem-vindo(a) ao grupo {grupo}
+
+📅 {data}
+⏰ {hora}
+👥 {total} membros`
+);
+
 }
 break;
 case 'calcular': {
@@ -5214,271 +6893,7 @@ if (!isGroup) return reply(enviar.msg.group);
 reply('Que dá a pika');
 break;
 
-    case 'Toshi':
-case 'menu':
-case 'm': 
-try {
-
-  await reagir(from, "👀");
-
-  const media = await prepareWAMessageMedia(
-    { image: FotoMenu },
-    { upload: kayrosmd.waUploadToServer }
-  );
-
-  const txtt = `𝙻𝙸𝚂𝚃 𝙼𝙴𝙽𝚄  
-
-👤 𝚄𝚂𝚄𝙰𝚁𝙸𝙾: @${sender.split("@")[0]}
-🤖 𝙱𝙾𝚃: ${NomeBot}
-👑 𝙳𝙾𝙽𝙾: ${NickDono}
-⌨️ 𝙿𝚁𝙴𝙵𝙸𝚇𝙾: ${prefix}
-🤖 𝚅𝙴𝚁𝚂Ã𝙾: ${version}
-🕘 𝙷𝙾𝚁𝙰𝚂: ${hora}
-📱 Dispositivo: ${adivinha}`.trim();
-
-  const botoes = [
-    {
-      name: "single_select",
-      buttonParamsJson: JSON.stringify({
-        title: "𝐌𝐄𝐍𝐔",
-        sections: [
-
-          {
-            title: "🌀 MENU PRINCIPAL",
-            highlight_label: "Math",
-            rows: [
-              {
-                title: "𝐌𝐄𝐍𝐔 𝐏𝐑𝐈𝐍𝐂𝐈𝐏𝐀𝐋",
-                description: "𝐂𝐎𝐌𝐀𝐍𝐃𝐎𝐒 𝐆𝐄𝐑𝐀𝐈𝐒 𝐃𝐎 𝐁𝐎𝐓",
-                id: `${prefix}m`
-              }
-            ]
-          },
-
-          {
-            title: "📁 MENU DOWNLOADS",
-            highlight_label: "𝐂𝐎𝐑𝐓𝐄𝐗",
-            rows: [
-              {
-                title: "📥 𝐃𝐎𝐖𝐍𝐋𝐎𝐀𝐃𝐒 𝐑Á𝐏𝐈𝐃𝐎𝐒",
-                description: "𝐕Í𝐃𝐄𝐎𝐒 𝐄 Á𝐔𝐃𝐈𝐎𝐒",
-                id: `${prefix}menudown`
-              }
-            ]
-          },
-
-          {
-            title: "👑 MENU DONO",
-            highlight_label: "𝐏𝐑𝐈𝐕𝐀𝐃𝐎",
-            rows: [
-              {
-                title: "⚙️ 𝐒𝐈𝐒𝐓𝐄𝐌𝐀𝐒 𝐄 𝐕𝐄𝐑𝐈𝐅𝐈𝐂𝐀ÇÕ𝐄𝐒",
-                description: "𝐂𝐎𝐌𝐀𝐍𝐃𝐎𝐒 𝐄 𝐒𝐈𝐒𝐓𝐄𝐌𝐀𝐒",
-                id: `${prefix}menudono`
-              }
-            ]
-          },
-
-          {
-            title: "🖼️ MENU LOGOS",
-            highlight_label: "𝐂𝐎𝐑𝐓𝐄𝐗",
-            rows: [
-              {
-                title: "𝐌𝐄𝐍𝐔 𝐋𝐎𝐆𝐎",
-                description: "𝐈𝐌𝐀𝐆𝐄𝐍𝐒 𝐄 𝐓𝐄𝐗𝐓𝐎𝐒",
-                id: `${prefix}logos`
-              }
-            ]
-          },
-
-          {
-            title: "🛡️ MENU ADMINS",
-            highlight_label: "𝐂𝐎𝐑𝐓𝐄𝐗",
-            rows: [
-              {
-                title: "𝐌𝐄𝐍𝐔 𝐀𝐃𝐌",
-                description: "𝐀𝐃𝐌𝐈𝐍𝐈𝐒𝐓𝐑𝐀ÇÃ𝐎 𝐃𝐎 𝐆𝐑𝐔𝐏𝐎",
-                id: `${prefix}menuadm`
-              }
-            ]
-          },
-
-          {
-            title: "🫠 MENU STICKERS",
-            highlight_label: "𝐂𝐎𝐑𝐓𝐄𝐗",
-            rows: [
-              {
-                title: "𝐌𝐄𝐍𝐔 𝐅𝐈𝐆𝐔𝐑𝐈𝐍𝐇𝐀𝐒",
-                description: "𝐂𝐑𝐈𝐀𝐑 𝐒𝐓𝐈𝐂𝐊𝐄𝐑𝐒",
-                id: `${prefix}menufig`
-              }
-            ]
-          },
-
-          {
-            title: "🤑 MENU VIP",
-            highlight_label: "𝐂𝐎𝐑𝐓𝐄𝐗",
-            rows: [
-              {
-                title: "𝐌𝐄𝐍𝐔 𝐕𝐈𝐏",
-                description: "𝐅𝐔𝐍ÇÕ𝐄𝐒 𝐏𝐑𝐄𝐌𝐈𝐔𝐌 𝐄𝐗𝐂𝐋𝐔𝐒𝐈𝐕𝐀𝐒",
-                id: `${prefix}menuvip`
-              }
-            ]
-          },
-
-          {
-            title: "🤖 INFORMAÇÕES DO BOT",
-            highlight_label: "𝐂𝐎𝐑𝐓𝐄𝐗",
-            rows: [
-              {
-                title: "𝐌𝐄𝐍𝐔 𝐁𝐎𝐓",
-                description: "𝐈𝐍𝐅𝐎𝐑𝐌𝐀ÇÕ𝐄𝐒 𝐃𝐎 𝐁𝐎𝐓",
-                id: `${prefix}menubot`
-              }
-            ]
-          },
-
-          {
-            title: "⚽ JOGOS E DIVERSÃO",
-            highlight_label: "𝐂𝐎𝐑𝐓𝐄𝐗",
-            rows: [
-              {
-                title: "𝐌𝐄𝐍𝐔 𝐉𝐎𝐆𝐎𝐒",
-                description: "𝐉𝐎𝐆𝐎𝐒 𝐄𝐌 𝐆𝐑𝐔𝐏𝐎",
-                id: `${prefix}menubn`
-              }
-            ]
-          },
-
-          {
-            title: "🔍 INTELIGÊNCIA ARTIFICIAL",
-            highlight_label: "𝐂𝐎𝐑𝐓𝐄𝐗",
-            rows: [
-              {
-                title: "𝐌𝐄𝐍𝐔 𝐈𝐀",
-                description: "𝐂𝐎𝐌𝐀𝐍𝐃𝐎𝐒 𝐃𝐄 𝐈𝐍𝐓𝐄𝐋𝐈𝐆Ê𝐍𝐂𝐈𝐀 𝐀𝐑𝐓𝐈𝐅𝐈𝐂𝐈𝐀𝐋",
-                id: `${prefix}menuia`
-              }
-            ]
-          },
-                    {
-            title: "⚔️ 𝐌𝐄𝐍𝐔 𝐅𝐑𝐄𝐄 𝐅𝐈𝐑𝐄",
-            highlight_label: "𝐂𝐎𝐑𝐓𝐄𝐗",
-            rows: [
-              {
-                title: "𝐅𝐑𝐄𝐄 𝐅𝐈𝐑𝐄 𝐈𝐍𝐅𝐎𝐑𝐌𝐀ÇÕ𝐄𝐒",
-                description: "𝐈𝐍𝐅𝐎𝐑𝐌𝐀ÇÕ𝐄𝐒 𝐒𝐎𝐁𝐑𝐄 𝐈𝐃",
-                id: `${prefix}menuff`
-              }
-            ]
-          },
-        ]
-      })
-    },
-
-    {
-      name: "quick_reply",
-      buttonParamsJson: JSON.stringify({
-        display_text: "👑 𝐂𝐑𝐈𝐀𝐃𝐎𝐑",
-        id: `${prefix}criador`
-      })
-    },
-  
-        {
-        name: "cta_url",
-        buttonParamsJson: JSON.stringify({
-            display_text: "📢 𝐂𝐇𝐀𝐍𝐍𝐄𝐋",
-            url: `${channelnk}`
-        })
-    }
     
-  ];
-
-  const carouselMessage = {
-    cards: [
-      {
-        header: {
-          hasMediaAttachment: true,
-          imageMessage: media.imageMessage
-        },
-        body: { text: txtt },
-        footer: { text: "Created by ✞𝐥𝐮𝐜𝐚𝐬👑" },
-        nativeFlowMessage: { buttons: botoes }
-      }
-    ]
-  };
-
-  await kayrosmd.relayMessage(
-    from,
-    { interactiveMessage: { carouselMessage } },
-    { quoted: info }
-  );
-
-} catch (e) {
-  reply("Erro ao enviar o menu.");
-}
-break;
-
-    case 'play':
-case 'yt': {
-    if (!text) return m.reply(`Exemplo: ${prefix}${command} Slash Inferno`);
-    
-    await systemZR.sendMessage(m.chat, { react: { text: "🔍", key: m.key } });
-    
-    try {
-        const axios = require('axios');
-        const { data: res } = await axios.get("https://systemzone.store/api/ytsearch", {
-            params: {
-                text: text
-            }
-        });
- 
-        if (res.status !== "sucesso" || !res.resultados || res.resultados.length === 0) return m.reply('Nenhum resultado encontrado.');
-        const firstThumb = res.resultados[0].thumbnail;
- 
-        const sections = [{
-            title: "Resultados do YouTube",
-            rows: res.resultados.slice(0, 10).map((track, index) => ({
-                header: `Resultado ${index + 1}`,
-                title: track.title,
-                description: `Canal: ${track.author} | Duração: ${track.duration}`,
-                id: `${prefix}playdl ${track.youtube_url}`
-            }))
-        }];
- 
-        let RG = `╔━᳀『 YᴏᴜTᴜʙᴇ 』═᳀\n⌬ *Busca:* ${text}\n⌬ *Resultados:* ${res.resultados.length}\n╚═━═━═━═━═━═━═᳀`;
- 
-        await systemZR.sendMessage(m.chat, {
-            interactiveMessage: {
-                title: RG,
-                footer: config.footer,
-                thumbnail: safeThumbUrl(firstThumb),
-                nativeFlowMessage: {
-                    messageParamsJson: JSON.stringify({
-                        bottom_sheet: {
-                            button_title: "Ver Resultados",
-                            list_title: "Vídeos Encontrados"
-                        }
-                    }),
-                    buttons: [{
-                        name: "single_select",
-                        buttonParamsJson: JSON.stringify({
-                            title: "Selecionar Música",
-                            sections: sections
-                        })
-                    }]
-                }
-            }
-        }, { quoted: m });
- 
-    } catch (e) {
-        console.error(e);
-        m.reply('Erro ao buscar no YouTube.');
-    }
-}
-break;
- 
 case 'playdl': {
     if (!text) return m.reply(`Exemplo: ${prefix}${command} [link-youtube]`);
     await systemZR.sendMessage(m.chat, { react: { text: "⏳", key: m.key } });
@@ -5593,46 +7008,29 @@ if (!isDono) return reply(enviar.msg.dono);
     }
     break
 }
-          default:
+    default:
           try {
           await sock.sendPresenceUpdate("composing", from);
           reagir('🚫');
             await sock.sendMessage(
   from,
   {
-    text: `╔╤ֶׂ࣮֮ᩧ╧ֵᩬ᩼┅ٜꠥׂ๋໋┄҇͜͡ᗁ᮫๋ׅٜׄ✦ֵ֘҆ᗀ҇͡━̶⵿ׂ໋𝆋֘💔ຼ۪۪۪ᩙ⵿━̶᮫ׅׄ҇͡ᗁֵ໋֘✦ֺ๋ٜᗀ҇͜͡┄ׂ໋ٜ֮֔┅ꠥֵֶׂ๋໋╧ᩬ᩼╤݄࣫╗
-            𝙽𝙰̃𝙾 𝙴𝙽𝙲𝙾𝙽𝚃𝚁𝙰𝙳𝙾 . . . 
-╚ׂ݄╤ֶׂ࣮֮ᩧ╧ֵᩬ᩼┅ٜꠥׂ๋໋┄҇͜͡ᗁ᮫๋ׅٜׄ✦ֵ֘҆ᗀ҇͡━̶⵿ׂ໋𝆋֘💔ຼ۪۪۪ᩙ⵿━̶᮫ׅׄ҇͡ᗁֵ໋֘✦ֺ๋ٜᗀ҇͜͡┄ׂ໋ٜ֮֔┅ꠥֵֶׂ๋໋╧ᩬ᩼╤݄࣫╝
-╔╤ֶׂ࣮֮ᩧ╧ֵᩬ᩼┅ٜꠥׂ๋໋┄҇͜͡ᗁ᮫๋ׅٜׄ✦ֵ֘҆ᗀ҇͡━̶⵿ׂ໋𝆋֘💢ຼ۪۪۪ᩙ⵿━̶᮫ׅׄ҇͡ᗁֵ໋֘✦ֺ๋ٜᗀ҇͜͡┄ׂ֮֔┅ꠥֵֶׂ๋໋╧ᩬ᩼╤݄࣫╗
-╭┅ׄᩙֶ┄ּׅ֘ꠥ━̶ׅׄ𔘓⃙໋ׄ╼⵿ׄ╾ׅ͠╬ּׅ۟۟۟۟۟۟۟۟╏ׂᩬּ֑🚫ᩖׅׄᩙ̶ ᮫ׄ╏ּׅ۟۟۟۟۟۟╬͠╼⵿ׂ໋╾⃙̶֮𔘓ׂׅ֓━ֶׅ֘┄ᩙꠥ┅╮
+    text: `╭┅ׄᩙֶ┄ּׅ֘ꠥ━̶ׅׄ𔘓⃙໋ׄ╼⵿ׄ╾ׅ͠╬ּׅ۟۟۟۟۟۟۟۟╏ׂᩬּ֑🚫ᩖׅׄᩙ̶ ᮫ׄ╏ּׅ۟۟۟۟۟۟╬͠╼⵿ׂ໋╾⃙̶֮𔘓ׂׅ֓━ֶׅ֘┄ᩙꠥ┅╮
 ┃‿ּ  🌹ᩙ 𝚄𝚂𝙴𝚁: ${sender ? '@' + sender.split('@')[0] : 'undefined'}
 ┃‿ּ  🌹ᩙ 𝙷𝙾𝚁𝙰́𝚁𝙸𝙾: ${horaFormatada}
 ┃‿ּ  🌹ᩙ 𝙳𝙰𝚃𝙰 𝙳𝙴 𝙷𝙾𝙹𝙴: ${dataFormatada}
 ┃‿ּ  🌹ᩙ 𝚃𝙴𝙽𝚃𝙰𝚃𝙸𝚅𝙰: *${prefix + command}*
 ┃‿ּ  🌹ᩙ 𝚄𝚂𝙴: ${prefix}menu
-╰ׅ┅ׄᩙֶ┄ּׅ֘ꠥ━̶ׅׄ𔘓⃙໋ׄ╼⵿ׄ╾ׅ͠╬ּׅ۟۟۟۟۟۟۟۟╏ׂᩬּ֑🚫ᩖׅׄᩙ̶ ᮫ׄ╏ּׅ۟۟۟۟۟۟╬͠╼⵿ׂ໋╾⃙̶֮𔘓ׂׅ֓━ֶׅ֘┄ᩙꠥ┅╯
-╚ׂ݄╤ֶׂ࣮֮ᩧ╧ֵᩬ᩼┅ٜꠥׂ๋໋┄҇͜͡ᗁ᮫ׅׄꠥֵֶׂ๋໋╧ᩬ᩼╤݄࣫╝`,
-    
-    footer: NomeDoBot,
-
+╰ׅ┅ׄᩙֶ┄ּׅ֘ꠥ━̶ׅׄ𔘓⃙໋ׄ╼⵿ׄ╾ׅ͠╬ּׅ۟۟۟۟۟۟۟۟╏ׂᩬּ֑🚫ᩖׅׄᩙ̶ ᮫ׄ╏ּׅ۟۟۟۟۟۟╬͠╼⵿ׂ໋╾⃙̶֮𔘓ׂׅ֓━ֶׅ֘┄ᩙꠥ┅╯`,
+   
     contextInfo: {
       forwardingScore: 999,
       isForwarded: true,
       forwardedNewsletterMessageInfo: {
-        newsletterJid: "120363405476475431@newsletter",
+        newsletterJid: "120363407261218149@newsletter",
         newsletterName: NomeDoBot
       }
     },
-
-    buttons: [
-      {
-        buttonId: prefix + 'menu',
-        buttonText: { displayText: 'MENU' },
-        type: 1
-      }
-    ],
-
-    headerType: 1,
     mentions: [sender]
   },
   { quoted: info }
@@ -5640,13 +7038,14 @@ if (!isDono) return reply(enviar.msg.dono);
 } catch (e) {
 console.error(e)
 }
+                break;
+                
         }
-
       } catch (err) {
         console.error('Erro ao processar mensagem:'.red, err);
       }
-    });
-
+    }); 
+    
     // Função para mostrar log
    function mostrarLogMsg(sock, info, pushname, nameGroup) {
       try {
@@ -5683,7 +7082,7 @@ console.error(e)
       }
     }
 
-  } catch (err) {
+        } catch (err) {
     console.error('Erro na inicialização do bot:'.red, err);
   }
 }
