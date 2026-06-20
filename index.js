@@ -372,224 +372,70 @@ function grupoAlugado(id) {
 
     return grupo;
 }
-function copiarArquivos(origem, destino) {
+async function atualizarSistema() {
 
-    
-const ignorar = [
-    "node_modules",
-    "configs.json",
-    "aluguel.json",
-    "backup"
-];
+    const dados =
+        (await axios.get(UPDATE_URL)).data;
 
-const arquivos = fs.readdirSync(origem);
+    const arquivos =
+        dados.files || [];
 
-for (const arquivo of arquivos) {
+    let atualizados = 0;
 
-    if (ignorar.includes(arquivo))
-        continue;
+    for (const arquivo of arquivos) {
 
-    const origemAtual =
-        path.join(origem, arquivo);
+        try {
 
-    const destinoAtual =
-        path.join(destino, arquivo);
+            const url =
+                `${REPO_RAW}/${arquivo}`;
 
-    if (
-        fs.statSync(origemAtual)
-        .isDirectory()
-    ) {
+            const resposta =
+                await axios.get(url);
 
-        if (
-            !fs.existsSync(destinoAtual)
-        ) {
-            fs.mkdirSync(
-                destinoAtual,
-                {
-                    recursive: true
-                }
+            const pasta =
+                path.dirname(arquivo);
+
+            if (
+                pasta !== "." &&
+                !fs.existsSync(pasta)
+            ) {
+
+                fs.mkdirSync(
+                    pasta,
+                    { recursive: true }
+                );
+
+            }
+
+            fs.writeFileSync(
+                arquivo,
+                resposta.data
             );
+
+            atualizados++;
+
+        } catch (e) {
+
+            console.log(
+                `Erro em ${arquivo}`
+            );
+
         }
 
-        copiarArquivos(
-            origemAtual,
-            destinoAtual
-        );
-
-    } else {
-
-        fs.copyFileSync(
-            origemAtual,
-            destinoAtual
-        );
-
     }
-}
 
-
-}
-
-function criarBackup() {
-
-
-const backupDir = "./backup";
-
-if (!fs.existsSync(backupDir)) {
-    fs.mkdirSync(
-        backupDir,
-        {
-            recursive: true
-        }
-    );
-}
-
-const pastaBackup = backupDir + "/" + Date.now();
-
-fs.mkdirSync(
-    pastaBackup,
-    {
-        recursive: true
-    }
-);
-
-copiarArquivos(
-    "./",
-    pastaBackup
-);
-
-return pastaBackup;
-
-
-}
-
-function restaurarBackup(
-pastaBackup
-) {
-
-
-copiarArquivos(
-    pastaBackup,
-    "./"
-);
-
-
-}
-
-async function atualizarBot() {
-
-
-const configs = JSON.parse(
-    fs.readFileSync(
-        "./dono/configs.json",
-        "utf8"
-    )
-);
-
-const versaoLocal =
-    configs.version;
-
-const dadosGithub =
-    (
-        await axios.get(
-            VERSION_URL
-        )
-    ).data;
-
-const versaoGithub =
-    dadosGithub.version;
-
-const novidades =
-    dadosGithub.mensagem ||
-    "Sem informações.";
-
-const arquivosAtualizar =
-    dadosGithub.files || [];
-
-console.log(
-    "Versão Local:",
-    versaoLocal
-);
-
-console.log(
-    "Versão GitHub:",
-    versaoGithub
-);
-
-if (!versaoGithub) {
-    throw new Error(
-        "Version não encontrada."
-    );
-}
-
-if (
-    versaoGithub ===
-    versaoLocal
-) {
-    return {
-        status: false,
-        mensagem:
-            "✅ Você já está na última versão."
-    };
-}
-
-const backup =
-    criarBackup();
-
-try {
-
-    for (
-        const arquivo
-        of arquivosAtualizar
-    ) {
-
-        const url =
-            `https://raw.githubusercontent.com/matheus09dasilvahenrique-wq/Toshiruz-Bot/main/${arquivo}`;
-
-        console.log(
-            "Atualizando:",
-            arquivo
-        );
-
-        const resposta =
-            await axios.get(
-                url,
-                {
-                    responseType:
-                        "text"
-                }
-            );
-
-        const pasta =
-            path.dirname(
-                arquivo
-            );
-
-        if (
-            pasta !== "." &&
-            !fs.existsSync(
-                pasta
+    const configs =
+        JSON.parse(
+            fs.readFileSync(
+                './dono/configs.json'
             )
-        ) {
-            fs.mkdirSync(
-                pasta,
-                {
-                    recursive: true
-                }
-            );
-        }
-
-        fs.writeFileSync(
-            arquivo,
-            resposta.data
         );
-
-    }
 
     configs.version =
-        versaoGithub;
+        dados.version;
 
     fs.writeFileSync(
-        "./dono/configs.json",
+        './dono/configs.json',
         JSON.stringify(
             configs,
             null,
@@ -597,50 +443,14 @@ try {
         )
     );
 
-    console.log(
-        "Versão atualizada para:",
-        versaoGithub
-    );
-
     return {
-        status: true,
-        versao: versaoGithub,
+        version: dados.version,
+        arquivos: atualizados,
         mensagem:
-
-
-`🚀 Atualização concluída!
-
-📦 Nova versão:
-${versaoGithub}
-
-📝 ${novidades}
-
-📁 Arquivos atualizados:
-${arquivosAtualizar.length}`
-};
-
-
-} catch (err) {
-
-    console.log(
-        "Erro na atualização."
-    );
-
-    console.log(err);
-
-    restaurarBackup(
-        backup
-    );
-
-    throw new Error(
-        "Falha na atualização. Backup restaurado."
-    );
+            dados.mensagem
+    };
 
 }
-
-
-}
-
 // Pega data de hoje como "2025-11-26"
 function dataHoje() {
     return new Date().toISOString().slice(0, 10);
@@ -5301,99 +5111,67 @@ case 'nickstilo': {
     }
 }
 break;
-                case 'update': {
+               case 'atualizar': {
 
     if (!isDono)
-        return reply('❌ Apenas o dono pode usar este comando.');
-
-    if (!q)
         return reply(
-`📦 𝚄𝚂𝙴:
-
-${prefix}update check
-${prefix}update start`
+            '❌ Apenas o dono.'
         );
 
-    if (q.toLowerCase() === 'check') {
+    try {
 
-        try {
+        const dados =
+            (await axios.get(
+                UPDATE_URL
+            )).data;
 
-            const dadosGithub =
-                (await axios.get(VERSION_URL)).data;
-
-            if (!dadosGithub?.version)
-                return reply(
-                    '❌ Não foi possível verificar a versão.'
-                );
-
-            if (dadosGithub.version === versao) {
-
-                return reply(
-`✅ 𝚅𝙾𝙲Ê 𝙹Á 𝙴𝚂𝚃Á 𝙽𝙰 Ú𝙻𝚃𝙸𝙼𝙰 𝚅𝙴𝚁𝚂Ã𝙾!
-
-📦 𝚅𝙴𝚁𝚂Ã𝙾: ${versao}`
-                );
-
-            }
+        if (
+            dados.version === versao
+        ) {
 
             return reply(
-`🚀 𝙽𝙾𝚅𝙰 𝙰𝚃𝚄𝙰𝙻𝙸𝚉𝙰ÇÃ𝙾 𝙳𝙸𝚂𝙿𝙾𝙽Í𝚅𝙴𝙻!
+`✅ 𝙾 𝙱𝙾𝚃 𝙹Á 𝙴𝚂𝚃Á 𝙰𝚃𝚄𝙰𝙻𝙸𝚉𝙰𝙳𝙾
 
-📦 𝙰𝚃𝚄𝙰𝙻: ${versao}
-📦 𝙽𝙾𝚅𝙰: ${dadosGithub.version}
-
-📝 ${dadosGithub.mensagem || 'Sem descrição.'}
-
-🚀 Use:
-${prefix}update start`
-            );
-
-        } catch (err) {
-
-            console.error(err);
-
-            return reply(
-                '❌ Erro ao verificar atualização.'
+📦 ${versao}`
             );
 
         }
 
-    }
+        await reply(
+`🚀 𝙰𝚃𝚄𝙰𝙻𝙸𝚉𝙰ÇÃ𝙾 𝙴𝙽𝙲𝙾𝙽𝚃𝚁𝙰𝙳𝙰
 
-    if (q.toLowerCase() === 'start') {
+📦 Atual: ${versao}
+📦 Nova: ${dados.version}
 
-        try {
+⏳ Atualizando...`
+        );
 
-            await reply(
-                '🚀 𝙸𝙽𝙸𝙲𝙸𝙰𝙽𝙳𝙾 𝙰𝚃𝚄𝙰𝙻𝙸𝚉𝙰ÇÃ𝙾...'
-            );
+        const resultado =
+            await atualizarSistema();
 
-            const resultado =
-                await atualizarBot();
+        await reply(
+`✅ 𝙰𝚃𝚄𝙰𝙻𝙸𝚉𝙰ÇÃ𝙾 𝙲𝙾𝙽𝙲𝙻𝚄Í𝙳𝙰
 
-            await reply(
-                resultado.mensagem
-            );
+📦 Versão:
+${resultado.version}
 
-            if (resultado.status) {
+📁 Arquivos:
+${resultado.arquivos}
 
-                await reply(
-                    '♻️ 𝚁𝙴𝙸𝙽𝙸𝙲𝙸𝙰𝙽𝙳𝙾 𝙾 𝙱𝙾𝚃...'
-                );
+📝 ${resultado.mensagem}
 
-                process.exit(0);
+♻️ Reiniciando...`
+        );
 
-            }
+        process.exit(0);
 
-        } catch (err) {
+    } catch (e) {
 
-            console.error(err);
+        console.log(e);
 
-            reply(
-                `❌ Erro na atualização:\n${err.message}`
-            );
-
-        }
+        reply(
+            '❌ Erro ao atualizar.'
+        );
 
     }
 
