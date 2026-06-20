@@ -22,9 +22,9 @@ const moment = require('moment-timezone');
 const baileysVer = require("baileys-pro/package.json").version;
 const nickTemp = {};
 const fetchJson = require('./assets/functions/fetchJson.js');
-const VERSION_URL =
+const UPDATE_URL =
 "https://raw.githubusercontent.com/matheus09dasilvahenrique-wq/Toshiruz-Bot/main/version.json";
-const ZIP_URL =
+const REPO_RAW =
 "https://github.com/matheus09dasilvahenrique-wq/Toshiruz-Bot/archive/refs/heads/main.zip";
 const fs = require('fs');
 const FormData = require('form-data');
