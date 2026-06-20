@@ -26,6 +26,7 @@ const UPDATE_URL =
 "https://raw.githubusercontent.com/matheus09dasilvahenrique-wq/Toshiruz-Bot/main/version.json";
 const REPO_RAW =
 "https://github.com/matheus09dasilvahenrique-wq/Toshiruz-Bot/archive/refs/heads/main.zip";
+const { version: versão } = require('./dono/configs.json');
 const fs = require('fs');
 const FormData = require('form-data');
 const AdmZip = require("adm-zip");
